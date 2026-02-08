@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>commitx Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .heatmap-cell { rx: 2; ry: 2; }
+    .chart-tooltip {
+      position: absolute;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 100;
+    }
+    .dark .chart-tooltip { background: rgba(255,255,255,0.9); color: #1e293b; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 min-h-screen transition-colors duration-300">
+  <!-- 数据注入占位 -->
+  <script>const DATA = __REPORT_DATA__;</script>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">
+          <span class="text-primary-500">commitx</span> Report
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1" id="meta-info"></p>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-sm text-slate-500 dark:text-slate-400" id="time-range"></span>
+        <button id="theme-toggle"
+          class="p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+          title="切换主题">
+          <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="summary-cards">
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-primary-500" id="card-commits">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">提交次数</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-emerald-500" id="card-added">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">新增行数</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-rose-500" id="card-deleted">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">删除行数</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-amber-500" id="card-files">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">变更文件数</div>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">提交热力图</h2>
+      <div id="heatmap" class="overflow-x-auto"></div>
+    </div>
+
+    <!-- Two column charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Hourly Distribution -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">提交时间分布 (24h)</h2>
+        <div id="hourly-chart"></div>
+      </div>
+
+      <!-- File Types -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">文件类型占比</h2>
+        <div id="filetype-chart" class="flex justify-center"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Author Ranking -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">作者贡献排行</h2>
+        <div id="author-chart"></div>
+      </div>
+
+      <!-- Directory Ranking -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">活跃目录 TOP 10</h2>
+        <div id="directory-chart"></div>
+      </div>
+    </div>
+
+    <!-- Busiest Day & Extra Stats -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">更多统计</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+          <span class="text-2xl">📅</span>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400">最繁忙的一天</div>
+            <div class="font-semibold" id="stat-busiest-day">-</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+          <span class="text-2xl">🕐</span>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400">最早提交</div>
+            <div class="font-semibold" id="stat-first-commit">-</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+          <span class="text-2xl">🕐</span>
+          <div>
+            <div class="text-slate-500 dark:text-slate-400">最近提交</div>
+            <div class="font-semibold" id="stat-last-commit">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-sm text-slate-400 dark:text-slate-500 py-4">
+      由 <span class="text-primary-500 font-medium">commitx</span> 生成于 <span id="generated-at"></span>
+    </footer>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="chart-tooltip" id="tooltip"></div>
+
+  <script>
+  // ============================================================
+  // 初始化
+  // ============================================================
+  const stats = DATA.stats;
+  const tooltip = document.getElementById('tooltip');
+  const isDark = () => document.documentElement.classList.contains('dark');
+
+  // 主题切换
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    // 重新绘制所有图表以更新颜色
+    renderAll();
+  });
+
+  // 检测系统主题
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+
+  function formatNumber(n) {
+    return n.toLocaleString('zh-CN');
+  }
+
+  function showTooltip(event, text) {
+    tooltip.style.opacity = 1;
+    tooltip.innerHTML = text;
+    tooltip.style.left = event.pageX + 12 + 'px';
+    tooltip.style.top = event.pageY - 28 + 'px';
+  }
+  function hideTooltip() { tooltip.style.opacity = 0; }
+
+  // ============================================================
+  // 渲染入口
+  // ============================================================
+  function renderAll() {
+    renderSummary();
+    renderHeatmap();
+    renderHourlyChart();
+    renderFileTypeChart();
+    renderAuthorChart();
+    renderDirectoryChart();
+    renderExtraStats();
+  }
+
+  // ============================================================
+  // 概要卡片
+  // ============================================================
+  function renderSummary() {
+    document.getElementById('card-commits').textContent = formatNumber(stats.totalCommits);
+    document.getElementById('card-added').textContent = '+' + formatNumber(stats.linesAdded);
+    document.getElementById('card-deleted').textContent = '-' + formatNumber(stats.linesDeleted);
+    document.getElementById('card-files').textContent = formatNumber(stats.filesChanged);
+    document.getElementById('meta-info').textContent = DATA.repos.join(', ');
+    document.getElementById('time-range').textContent = DATA.timeRange.from + ' ~ ' + DATA.timeRange.to;
+    document.getElementById('generated-at').textContent = DATA.generatedAt;
+  }
+
+  // ============================================================
+  // 提交热力图 (GitHub 风格)
+  // ============================================================
+  function renderHeatmap() {
+    const container = document.getElementById('heatmap');
+    container.innerHTML = '';
+
+    const heatmapData = stats.dailyHeatmap;
+    const cellSize = 13;
+    const cellGap = 3;
+    const totalSize = cellSize + cellGap;
+    const weekDayLabels = ['', '一', '', '三', '', '五', ''];
+
+    // 计算日期范围
+    const dates = Object.keys(heatmapData).sort();
+    if (dates.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const startDate = new Date(DATA.timeRange.from);
+    const endDate = new Date(DATA.timeRange.to);
+
+    // 调整到该周的周一
+    const adjustedStart = new Date(startDate);
+    adjustedStart.setDate(adjustedStart.getDate() - ((adjustedStart.getDay() + 6) % 7));
+
+    // 生成所有日期
+    const allDays = [];
+    const current = new Date(adjustedStart);
+    while (current <= endDate) {
+      const key = current.toISOString().split('T')[0];
+      allDays.push({ date: key, count: heatmapData[key] || 0 });
+      current.setDate(current.getDate() + 1);
+    }
+
+    const weeks = Math.ceil(allDays.length / 7);
+    const width = weeks * totalSize + 40;
+    const height = 7 * totalSize + 30;
+
+    const maxCount = Math.max(...allDays.map(d => d.count), 1);
+
+    const lightColors = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+    const darkColors = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'];
+    const colors = isDark() ? darkColors : lightColors;
+
+    const colorScale = (count) => {
+      if (count === 0) return colors[0];
+      const ratio = count / maxCount;
+      if (ratio <= 0.25) return colors[1];
+      if (ratio <= 0.5) return colors[2];
+      if (ratio <= 0.75) return colors[3];
+      return colors[4];
+    };
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    // 星期标签
+    weekDayLabels.forEach((label, i) => {
+      svg.append('text')
+        .attr('x', 20)
+        .attr('y', 28 + i * totalSize)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', isDark() ? '#8b949e' : '#959da5')
+        .text(label);
+    });
+
+    // 月份标签
+    const monthPositions = {};
+    allDays.forEach((d, i) => {
+      const date = new Date(d.date);
+      if (date.getDate() <= 7) {
+        const weekIdx = Math.floor(i / 7);
+        const monthName = date.toLocaleDateString('zh-CN', { month: 'short' });
+        if (!monthPositions[monthName]) {
+          monthPositions[monthName] = 36 + weekIdx * totalSize;
+        }
+      }
+    });
+
+    Object.entries(monthPositions).forEach(([month, x]) => {
+      svg.append('text')
+        .attr('x', x)
+        .attr('y', 10)
+        .attr('font-size', '10px')
+        .attr('fill', isDark() ? '#8b949e' : '#959da5')
+        .text(month);
+    });
+
+    // 热力图格子
+    allDays.forEach((d, i) => {
+      const weekIdx = Math.floor(i / 7);
+      const dayIdx = i % 7;
+
+      svg.append('rect')
+        .attr('class', 'heatmap-cell')
+        .attr('x', 36 + weekIdx * totalSize)
+        .attr('y', 18 + dayIdx * totalSize)
+        .attr('width', cellSize)
+        .attr('height', cellSize)
+        .attr('fill', colorScale(d.count))
+        .on('mouseover', (event) => showTooltip(event, `${d.date}: ${d.count} 次提交`))
+        .on('mouseout', hideTooltip);
+    });
+  }
+
+  // ============================================================
+  // 提交时间分布 (24h 柱状图)
+  // ============================================================
+  function renderHourlyChart() {
+    const container = document.getElementById('hourly-chart');
+    container.innerHTML = '';
+
+    const data = stats.hourlyDistribution.map((count, hour) => ({ hour, count }));
+    const margin = { top: 10, right: 10, bottom: 30, left: 40 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().domain(data.map(d => d.hour)).range([0, width]).padding(0.3);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.count) || 1]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickFormat(d => d + ':00').tickValues(data.filter((_, i) => i % 3 === 0).map(d => d.hour)))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    svg.selectAll('.bar')
+      .data(data)
+      .join('rect')
+      .attr('x', d => x(d.hour))
+      .attr('y', d => y(d.count))
+      .attr('width', x.bandwidth())
+      .attr('height', d => height - y(d.count))
+      .attr('fill', '#0ea5e9')
+      .attr('rx', 2)
+      .on('mouseover', (event, d) => showTooltip(event, `${d.hour}:00 - ${d.hour + 1}:00: ${d.count} 次提交`))
+      .on('mouseout', hideTooltip);
+  }
+
+  // ============================================================
+  // 文件类型占比 (甜甜圈图)
+  // ============================================================
+  function renderFileTypeChart() {
+    const container = document.getElementById('filetype-chart');
+    container.innerHTML = '';
+
+    const rawData = stats.fileTypes.slice(0, 8);
+    if (rawData.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = rawData.map(d => ({
+      name: d.extension,
+      value: d.added + d.deleted,
+    }));
+
+    const width = 300;
+    const height = 300;
+    const radius = Math.min(width, height) / 2 - 20;
+
+    const colors = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2},${height/2})`);
+
+    const pie = d3.pie().value(d => d.value).sort(null);
+    const arc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius);
+
+    svg.selectAll('path')
+      .data(pie(data))
+      .join('path')
+      .attr('d', arc)
+      .attr('fill', (_, i) => colors[i % colors.length])
+      .attr('stroke', isDark() ? '#1e293b' : '#fff')
+      .attr('stroke-width', 2)
+      .on('mouseover', (event, d) => {
+        const pct = ((d.data.value / d3.sum(data, x => x.value)) * 100).toFixed(1);
+        showTooltip(event, `${d.data.name}: ${formatNumber(d.data.value)} 行 (${pct}%)`);
+      })
+      .on('mouseout', hideTooltip);
+
+    // 图例
+    const legend = d3.select(container)
+      .append('div')
+      .attr('class', 'flex flex-wrap gap-2 mt-3 justify-center');
+
+    data.forEach((d, i) => {
+      const item = legend.append('div').attr('class', 'flex items-center gap-1 text-xs');
+      item.append('div')
+        .style('width', '10px')
+        .style('height', '10px')
+        .style('border-radius', '2px')
+        .style('background', colors[i % colors.length]);
+      item.append('span')
+        .attr('class', 'text-slate-600 dark:text-slate-400')
+        .text(d.name);
+    });
+  }
+
+  // ============================================================
+  // 作者贡献排行 (横向柱状图)
+  // ============================================================
+  function renderAuthorChart() {
+    const container = document.getElementById('author-chart');
+    container.innerHTML = '';
+
+    const data = stats.authors.slice(0, 10);
+    if (data.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const margin = { top: 5, right: 60, bottom: 5, left: 100 };
+    const barHeight = 28;
+    const height = data.length * barHeight + margin.top + margin.bottom;
+    const width = container.clientWidth - margin.left - margin.right;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear().domain([0, d3.max(data, d => d.commits) || 1]).range([0, width]);
+    const y = d3.scaleBand().domain(data.map(d => d.name)).range([0, data.length * barHeight]).padding(0.3);
+
+    const textColor = isDark() ? '#94a3b8' : '#64748b';
+
+    svg.selectAll('.bar')
+      .data(data)
+      .join('rect')
+      .attr('x', 0)
+      .attr('y', d => y(d.name))
+      .attr('width', d => x(d.commits))
+      .attr('height', y.bandwidth())
+      .attr('fill', '#0ea5e9')
+      .attr('rx', 3)
+      .on('mouseover', (event, d) =>
+        showTooltip(event, `${d.name}: ${d.commits} commits, +${formatNumber(d.linesAdded)} / -${formatNumber(d.linesDeleted)}`))
+      .on('mouseout', hideTooltip);
+
+    svg.selectAll('.label')
+      .data(data)
+      .join('text')
+      .attr('x', -8)
+      .attr('y', d => y(d.name) + y.bandwidth() / 2)
+      .attr('text-anchor', 'end')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', '12px')
+      .attr('fill', textColor)
+      .text(d => d.name.length > 12 ? d.name.slice(0, 12) + '...' : d.name);
+
+    svg.selectAll('.value')
+      .data(data)
+      .join('text')
+      .attr('x', d => x(d.commits) + 6)
+      .attr('y', d => y(d.name) + y.bandwidth() / 2)
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', '11px')
+      .attr('fill', textColor)
+      .text(d => d.commits);
+  }
+
+  // ============================================================
+  // 活跃目录 TOP 10 (横向柱状图)
+  // ============================================================
+  function renderDirectoryChart() {
+    const container = document.getElementById('directory-chart');
+    container.innerHTML = '';
+
+    const data = stats.directories.slice(0, 10);
+    if (data.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const margin = { top: 5, right: 70, bottom: 5, left: 100 };
+    const barHeight = 28;
+    const height = data.length * barHeight + margin.top + margin.bottom;
+    const width = container.clientWidth - margin.left - margin.right;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear().domain([0, d3.max(data, d => d.linesChanged) || 1]).range([0, width]);
+    const y = d3.scaleBand().domain(data.map(d => d.path)).range([0, data.length * barHeight]).padding(0.3);
+
+    const textColor = isDark() ? '#94a3b8' : '#64748b';
+
+    svg.selectAll('.bar')
+      .data(data)
+      .join('rect')
+      .attr('x', 0)
+      .attr('y', d => y(d.path))
+      .attr('width', d => x(d.linesChanged))
+      .attr('height', y.bandwidth())
+      .attr('fill', '#8b5cf6')
+      .attr('rx', 3)
+      .on('mouseover', (event, d) =>
+        showTooltip(event, `${d.path}: ${d.commits} commits, ${formatNumber(d.linesChanged)} 行变更`))
+      .on('mouseout', hideTooltip);
+
+    svg.selectAll('.label')
+      .data(data)
+      .join('text')
+      .attr('x', -8)
+      .attr('y', d => y(d.path) + y.bandwidth() / 2)
+      .attr('text-anchor', 'end')
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', '12px')
+      .attr('fill', textColor)
+      .text(d => d.path.length > 14 ? d.path.slice(0, 14) + '...' : d.path);
+
+    svg.selectAll('.value')
+      .data(data)
+      .join('text')
+      .attr('x', d => x(d.linesChanged) + 6)
+      .attr('y', d => y(d.path) + y.bandwidth() / 2)
+      .attr('dominant-baseline', 'middle')
+      .attr('font-size', '11px')
+      .attr('fill', textColor)
+      .text(d => formatNumber(d.linesChanged));
+  }
+
+  // ============================================================
+  // 更多统计
+  // ============================================================
+  function renderExtraStats() {
+    if (stats.busiestDay && stats.busiestDay.date) {
+      document.getElementById('stat-busiest-day').textContent =
+        stats.busiestDay.date + ' (' + stats.busiestDay.count + ' 次提交)';
+    }
+    if (stats.firstCommitDate) {
+      document.getElementById('stat-first-commit').textContent =
+        new Date(stats.firstCommitDate).toLocaleDateString('zh-CN');
+    }
+    if (stats.lastCommitDate) {
+      document.getElementById('stat-last-commit').textContent =
+        new Date(stats.lastCommitDate).toLocaleDateString('zh-CN');
+    }
+  }
+
+  // 启动渲染
+  renderAll();
+
+  // 窗口大小变化时重新渲染
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderAll, 300);
+  });
+  </script>
+</body>
+</html>

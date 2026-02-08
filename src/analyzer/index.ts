@@ -1,0 +1,50 @@
+import ora from 'ora';
+import chalk from 'chalk';
+import { parseGitLog } from './git-log-parser.js';
+import { calculateStats, mergeStats } from './stats-calculator.js';
+import type { AnalyzeOptions, CommitStats } from '../types/index.js';
+
+/**
+ * 分析所有选定仓库的提交记录
+ */
+export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats> {
+  const { repos, timeRange, author } = options;
+  const spinner = ora('分析提交记录...').start();
+  const allStats: CommitStats[] = [];
+
+  for (let i = 0; i < repos.length; i++) {
+    const repo = repos[i];
+    spinner.text = `分析提交记录 (${i + 1}/${repos.length}) - ${repo.name}`;
+
+    try {
+      const commits = await parseGitLog(repo.path, timeRange, author);
+
+      if (commits.length > 100000) {
+        spinner.info(
+          chalk.yellow(`${repo.name} 包含 ${commits.length.toLocaleString()} 条提交，处理可能需要一些时间...`)
+        );
+        spinner.start();
+      }
+
+      const stats = calculateStats(commits);
+      allStats.push(stats);
+    } catch (error) {
+      spinner.warn(
+        chalk.yellow(
+          `跳过仓库 ${repo.name}: ${error instanceof Error ? error.message : '未知错误'}`
+        )
+      );
+      spinner.start();
+    }
+  }
+
+  const merged = mergeStats(allStats);
+
+  spinner.succeed(
+    `分析完成: ${merged.totalCommits.toLocaleString()} 条提交, ` +
+    `${merged.authors.length} 位作者, ` +
+    `+${merged.linesAdded.toLocaleString()} / -${merged.linesDeleted.toLocaleString()} 行`
+  );
+
+  return merged;
+}
