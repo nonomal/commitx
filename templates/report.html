@@ -337,8 +337,9 @@
       return;
     }
 
-    const startDate = new Date(DATA.timeRange.from);
-    const endDate = new Date(DATA.timeRange.to);
+    // 从数据或 timeRange 推断日期范围
+    const startDate = DATA.timeRange ? new Date(DATA.timeRange.from) : new Date(dates[0]);
+    const endDate = DATA.timeRange ? new Date(DATA.timeRange.to) : new Date(dates[dates.length - 1]);
 
     // 调整到该周的周一
     const adjustedStart = new Date(startDate);
