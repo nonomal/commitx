@@ -173,21 +173,27 @@
       <h2 class="text-lg font-semibold mb-4">更多统计</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-          <span class="text-2xl">📅</span>
+          <svg class="w-6 h-6 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
           <div>
             <div class="text-slate-500 dark:text-slate-400">最繁忙的一天</div>
             <div class="font-semibold" id="stat-busiest-day">-</div>
           </div>
         </div>
         <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-          <span class="text-2xl">🕐</span>
+          <svg class="w-6 h-6 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div>
             <div class="text-slate-500 dark:text-slate-400">最早提交</div>
             <div class="font-semibold" id="stat-first-commit">-</div>
           </div>
         </div>
         <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-          <span class="text-2xl">🕐</span>
+          <svg class="w-6 h-6 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div>
             <div class="text-slate-500 dark:text-slate-400">最近提交</div>
             <div class="font-semibold" id="stat-last-commit">-</div>
@@ -230,6 +236,26 @@
       </div>
     </div>
 
+    <!-- Author File Type Stats Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">作者文件类型贡献 TOP 20</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="author-filetype-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium cursor-pointer hover:text-primary-500 select-none" data-sort="author">作者 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium cursor-pointer hover:text-primary-500 select-none" data-sort="extension">文件类型 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="fileCount">文件数 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="linesAdded">新增行 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="linesDeleted">删除行 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="commits">提交数 <span class="sort-icon"></span></th>
+            </tr>
+          </thead>
+          <tbody id="author-filetype-body"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="text-center text-sm text-slate-400 dark:text-slate-500 py-4">
       由 <span class="text-primary-500 font-medium">commitx</span> 生成于 <span id="generated-at"></span>
@@ -263,6 +289,12 @@
     return n.toLocaleString('zh-CN');
   }
 
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function showTooltip(event, text) {
     tooltip.style.opacity = 1;
     tooltip.innerHTML = text;
@@ -288,6 +320,7 @@
     renderDirectoryChart();
     renderHotFilesTable();
     renderSoloFilesTable();
+    renderAuthorFileTypeTable();
     renderExtraStats();
   }
 
@@ -472,7 +505,19 @@
       .attr('height', d => height - y(d.count))
       .attr('fill', '#0ea5e9')
       .attr('rx', 2)
-      .on('mouseover', (event, d) => showTooltip(event, `${d.hour}:00 - ${d.hour + 1}:00: ${d.count} 次提交`))
+      .on('mouseover', (event, d) => {
+        const hourData = stats.hourlyByAuthor?.[d.hour];
+        let tooltip = `${d.hour}:00 - ${d.hour + 1}:00: ${d.count} 次提交`;
+        if (hourData && Object.keys(hourData.authors).length > 0) {
+          const authorList = Object.entries(hourData.authors)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => `${name}: ${count}`)
+            .join('\n');
+          tooltip += '\n' + authorList;
+        }
+        showTooltip(event, tooltip);
+      })
       .on('mouseout', hideTooltip);
   }
 
@@ -861,7 +906,20 @@
       .attr('height', d => height - y(d.count))
       .attr('fill', (_, i) => i >= 5 ? '#f59e0b' : '#8b5cf6')
       .attr('rx', 2)
-      .on('mouseover', (event, d) => showTooltip(event, `${d.day}: ${d.count} 次提交`))
+      .on('mouseover', (event, d, i) => {
+        const dayIndex = data.findIndex(item => item.day === d.day);
+        const dayData = stats.timePatterns?.weekdayByAuthor?.[dayIndex];
+        let tooltip = `${d.day}: ${d.count} 次提交`;
+        if (dayData && Object.keys(dayData.authors).length > 0) {
+          const authorList = Object.entries(dayData.authors)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => `${name}: ${count}`)
+            .join('\n');
+          tooltip += '\n' + authorList;
+        }
+        showTooltip(event, tooltip);
+      })
       .on('mouseout', hideTooltip);
   }
 
@@ -986,6 +1044,74 @@
       tbody.appendChild(tr);
     }
   }
+
+  // ============================================================
+  // 作者×文件类型贡献表格（支持排序）
+  // ============================================================
+  let aftSortKey = 'linesAdded';
+  let aftSortAsc = false;
+
+  function renderAuthorFileTypeTable() {
+    const tbody = document.getElementById('author-filetype-body');
+    tbody.innerHTML = '';
+
+    if (!stats.authorFileTypes || stats.authorFileTypes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">暂无数据</td></tr>';
+      return;
+    }
+
+    // 排序数据
+    const sortedData = [...stats.authorFileTypes].sort((a, b) => {
+      let valA = a[aftSortKey];
+      let valB = b[aftSortKey];
+      // 字符串比较
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+        return aftSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      // 数字比较
+      return aftSortAsc ? valA - valB : valB - valA;
+    });
+
+    for (const item of sortedData) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-[120px]" title="${escapeHtml(item.author)}">${escapeHtml(item.author)}</td>
+        <td class="py-2 text-slate-600 dark:text-slate-400">${escapeHtml(item.extension)}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${formatNumber(item.fileCount)}</td>
+        <td class="py-2 text-right text-emerald-600 dark:text-emerald-400">+${formatNumber(item.linesAdded)}</td>
+        <td class="py-2 text-right text-rose-600 dark:text-rose-400">-${formatNumber(item.linesDeleted)}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${item.commits}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // 更新排序图标
+    document.querySelectorAll('#author-filetype-table th[data-sort]').forEach(th => {
+      const icon = th.querySelector('.sort-icon');
+      if (th.dataset.sort === aftSortKey) {
+        icon.textContent = aftSortAsc ? '↑' : '↓';
+      } else {
+        icon.textContent = '';
+      }
+    });
+  }
+
+  // 绑定表头点击排序
+  document.querySelectorAll('#author-filetype-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (aftSortKey === key) {
+        aftSortAsc = !aftSortAsc;
+      } else {
+        aftSortKey = key;
+        aftSortAsc = key === 'author' || key === 'extension'; // 字符串默认升序
+      }
+      renderAuthorFileTypeTable();
+    });
+  });
 
   // 启动渲染
   renderAll();
