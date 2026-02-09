@@ -191,7 +191,7 @@ export interface ScanOptions {
 /** 分析配置 */
 export interface AnalyzeOptions {
   repos: RepoInfo[];
-  timeRange: TimeRange;
+  timeRange: TimeRange | null;
   author?: string;
 }
 
@@ -199,7 +199,7 @@ export interface AnalyzeOptions {
 export interface ReportOptions {
   outputPath: string;
   autoOpen: boolean;
-  timeRange: TimeRange;
+  timeRange: TimeRange | null;
   repoNames: string[];
 }
 
@@ -210,6 +210,6 @@ export interface ReportData {
   timeRange: {
     from: string;
     to: string;
-  };
+  } | null;
   repos: string[];
 }

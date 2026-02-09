@@ -15,10 +15,12 @@ export async function buildHtml(
   const reportData: ReportData = {
     stats: serializeStats(stats),
     generatedAt: new Date().toLocaleString('zh-CN'),
-    timeRange: {
-      from: options.timeRange.from.toISOString().split('T')[0],
-      to: options.timeRange.to.toISOString().split('T')[0],
-    },
+    timeRange: options.timeRange
+      ? {
+          from: options.timeRange.from.toISOString().split('T')[0],
+          to: options.timeRange.to.toISOString().split('T')[0],
+        }
+      : null,
     repos: options.repoNames,
   };
 

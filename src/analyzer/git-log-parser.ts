@@ -11,10 +11,11 @@ const FORMAT = `${COMMIT_SEPARATOR}%H${FIELD_SEPARATOR}%an${FIELD_SEPARATOR}%ae$
 
 /**
  * 从指定仓库解析 git log，返回提交记录数组
+ * timeRange 为 null 时表示获取所有提交
  */
 export async function parseGitLog(
   repoPath: string,
-  timeRange: TimeRange,
+  timeRange: TimeRange | null,
   author?: string
 ): Promise<CommitRecord[]> {
   const ignoreFilter = await loadGitignore(repoPath);
@@ -24,9 +25,12 @@ export async function parseGitLog(
     'log',
     `--format="${FORMAT}"`,
     '--numstat',
-    `--since="${timeRange.from.toISOString()}"`,
-    `--until="${timeRange.to.toISOString()}"`,
   ];
+
+  if (timeRange) {
+    args.push(`--since="${timeRange.from.toISOString()}"`);
+    args.push(`--until="${timeRange.to.toISOString()}"`);
+  }
 
   if (author) {
     args.push(`--author="${author}"`);

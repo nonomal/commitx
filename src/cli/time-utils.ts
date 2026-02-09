@@ -1,15 +1,20 @@
 import type { CliOptions, TimeRange } from '../types/index.js';
 
-/** 时间预设格式: 7d / 1m / 3m / 6m / 1y */
+/** 时间预设格式: 7d / 1m / 3m / 6m / 1y / all */
 const PERIOD_REGEX = /^(\d+)(d|m|y)$/;
 
 /**
  * 解析时间预设字符串，返回起止时间范围
+ * 'all' 表示不限时间（从 1970 年至今）
  */
-export function parsePeriod(period: string): TimeRange {
+export function parsePeriod(period: string): TimeRange | null {
+  if (period === 'all') {
+    return null;
+  }
+
   const match = PERIOD_REGEX.exec(period);
   if (!match) {
-    throw new Error(`无效的时间预设: "${period}"，支持格式: 7d, 1m, 3m, 6m, 1y`);
+    throw new Error(`无效的时间预设: "${period}"，支持格式: 7d, 1m, 3m, 6m, 1y, all`);
   }
 
   const amount = parseInt(match[1], 10);
@@ -46,8 +51,9 @@ function parseDate(dateStr: string): Date {
 /**
  * 根据 CLI 参数解析最终的时间范围
  * --from / --to 优先于 --period
+ * 返回 null 表示不限时间
  */
-export function resolveTimeRange(opts: CliOptions): TimeRange {
+export function resolveTimeRange(opts: CliOptions): TimeRange | null {
   if (opts.from || opts.to) {
     const to = opts.to ? parseDate(opts.to) : new Date();
     const from = opts.from ? parseDate(opts.from) : (() => {

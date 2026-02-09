@@ -14,7 +14,7 @@ program
   .description('Git 提交统计工具，生成可视化 HTML 报告')
   .version('1.0.0')
   .argument('[directory]', '要扫描的目录路径', process.cwd())
-  .option('-p, --period <period>', '时间预设 (7d/1m/3m/6m/1y)', '1y')
+  .option('-p, --period <period>', '时间预设 (7d/1m/3m/6m/1y/all)', 'all')
   .option('-f, --from <date>', '起始日期 (YYYY-MM-DD)')
   .option('-t, --to <date>', '结束日期 (YYYY-MM-DD)')
   .option('-a, --author <name>', '过滤作者')
@@ -78,9 +78,12 @@ async function run(directory: string, opts: CliOptions): Promise<void> {
     selectedRepos = repos.filter((r) => selected.includes(r.path));
   }
 
+  const timeRangeText = timeRange
+    ? `${formatDate(timeRange.from)} ~ ${formatDate(timeRange.to)}`
+    : '所有提交';
   console.log(
     chalk.gray(
-      `\n已选择 ${selectedRepos.length} 个仓库，时间范围：${formatDate(timeRange.from)} ~ ${formatDate(timeRange.to)}\n`
+      `\n已选择 ${selectedRepos.length} 个仓库，时间范围：${timeRangeText}\n`
     )
   );
 
