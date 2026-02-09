@@ -300,7 +300,9 @@
     document.getElementById('card-deleted').textContent = '-' + formatNumber(stats.linesDeleted);
     document.getElementById('card-files').textContent = formatNumber(stats.filesChanged);
     document.getElementById('meta-info').textContent = DATA.repos.join(', ');
-    document.getElementById('time-range').textContent = DATA.timeRange.from + ' ~ ' + DATA.timeRange.to;
+    document.getElementById('time-range').textContent = DATA.timeRange
+      ? DATA.timeRange.from + ' ~ ' + DATA.timeRange.to
+      : '所有提交';
     document.getElementById('generated-at').textContent = DATA.generatedAt;
   }
 
