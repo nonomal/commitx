@@ -44,6 +44,80 @@ export interface DirectoryStats {
   linesChanged: number;
 }
 
+// ============================================================
+// 扩展统计类型
+// ============================================================
+
+/** 热点文件 */
+export interface HotFile {
+  path: string;
+  modifyCount: number;
+  authors: string[];
+}
+
+/** 代码质量指标 */
+export interface QualityMetrics {
+  avgFilesPerCommit: number;
+  avgLinesPerCommit: number;
+  churnRate: number;
+  hotFiles: HotFile[];
+}
+
+/** 时间模式指标 */
+export interface TimePatterns {
+  weekdayDistribution: number[];
+  weekendCommits: number;
+  avgCommitInterval: number;
+  longestStreak: number;
+  currentStreak: number;
+}
+
+/** 周趋势数据点 */
+export interface WeeklyPoint {
+  week: string;
+  commits: number;
+  linesAdded: number;
+  linesDeleted: number;
+}
+
+/** 累计代码量数据点 */
+export interface CumulativePoint {
+  date: string;
+  netLines: number;
+}
+
+/** 趋势数据 */
+export interface TrendData {
+  weeklyTrend: WeeklyPoint[];
+  cumulativeLines: CumulativePoint[];
+}
+
+/** 单人维护文件（知识集中度风险） */
+export interface SoloFile {
+  path: string;
+  author: string;
+  commits: number;
+}
+
+/** 协作热点文件 */
+export interface CollabFile {
+  path: string;
+  authorCount: number;
+  totalCommits: number;
+}
+
+/** 协作指标 */
+export interface CollaborationMetrics {
+  soloFiles: SoloFile[];
+  collaborationHotspots: CollabFile[];
+}
+
+/** Commit Message 分析 */
+export interface CommitMessageStats {
+  typeDistribution: Record<string, number>;
+  avgMessageLength: number;
+}
+
 /** 最繁忙的一天 */
 export interface BusiestDay {
   date: string;
@@ -75,6 +149,13 @@ export interface CommitStats {
   // 时间分布
   hourlyDistribution: number[];
   dailyHeatmap: Record<string, number>;
+
+  // 扩展统计维度
+  quality: QualityMetrics;
+  timePatterns: TimePatterns;
+  trends: TrendData;
+  collaboration: CollaborationMetrics;
+  messageStats: CommitMessageStats;
 }
 
 /** 仓库信息 */

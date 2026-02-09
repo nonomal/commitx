@@ -66,7 +66,7 @@
     </header>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="summary-cards">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4" id="summary-cards">
       <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
         <div class="text-3xl font-bold text-primary-500" id="card-commits">0</div>
         <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">提交次数</div>
@@ -85,6 +85,26 @@
       </div>
     </div>
 
+    <!-- Quality Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="quality-cards">
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-violet-500" id="card-avg-files">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">平均文件/提交</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-cyan-500" id="card-avg-lines">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">平均行数/提交</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-orange-500" id="card-churn">0%</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">代码流失率</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="text-3xl font-bold text-pink-500" id="card-streak">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">最长连续天数</div>
+      </div>
+    </div>
+
     <!-- Heatmap -->
     <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
       <h2 class="text-lg font-semibold mb-4">提交热力图</h2>
@@ -93,16 +113,44 @@
 
     <!-- Two column charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Weekly Trend -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">周趋势图</h2>
+        <div id="weekly-trend-chart"></div>
+      </div>
+
+      <!-- Cumulative Lines -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">累计代码量曲线</h2>
+        <div id="cumulative-chart"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- Hourly Distribution -->
       <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-lg font-semibold mb-4">提交时间分布 (24h)</h2>
         <div id="hourly-chart"></div>
       </div>
 
+      <!-- Weekday Distribution -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">周几分布</h2>
+        <div id="weekday-chart"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- File Types -->
       <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
         <h2 class="text-lg font-semibold mb-4">文件类型占比</h2>
         <div id="filetype-chart" class="flex justify-center"></div>
+      </div>
+
+      <!-- Commit Type Distribution -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold mb-4">提交类型分布</h2>
+        <div id="commit-type-chart" class="flex justify-center"></div>
       </div>
     </div>
 
@@ -145,6 +193,40 @@
             <div class="font-semibold" id="stat-last-commit">-</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Hot Files Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">热点文件 TOP 10</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="hot-files-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">修改次数</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">贡献者数</th>
+            </tr>
+          </thead>
+          <tbody id="hot-files-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Solo Files Table (Knowledge Concentration Risk) -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">知识集中度风险 (单人维护文件)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="solo-files-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">唯一维护者</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交次数</th>
+            </tr>
+          </thead>
+          <tbody id="solo-files-body"></tbody>
+        </table>
       </div>
     </div>
 
@@ -194,11 +276,18 @@
   // ============================================================
   function renderAll() {
     renderSummary();
+    renderQualityCards();
     renderHeatmap();
+    renderWeeklyTrendChart();
+    renderCumulativeChart();
     renderHourlyChart();
+    renderWeekdayChart();
     renderFileTypeChart();
+    renderCommitTypeChart();
     renderAuthorChart();
     renderDirectoryChart();
+    renderHotFilesTable();
+    renderSoloFilesTable();
     renderExtraStats();
   }
 
@@ -213,6 +302,17 @@
     document.getElementById('meta-info').textContent = DATA.repos.join(', ');
     document.getElementById('time-range').textContent = DATA.timeRange.from + ' ~ ' + DATA.timeRange.to;
     document.getElementById('generated-at').textContent = DATA.generatedAt;
+  }
+
+  // ============================================================
+  // 质量卡片
+  // ============================================================
+  function renderQualityCards() {
+    if (!stats.quality) return;
+    document.getElementById('card-avg-files').textContent = stats.quality.avgFilesPerCommit.toFixed(1);
+    document.getElementById('card-avg-lines').textContent = stats.quality.avgLinesPerCommit.toFixed(0);
+    document.getElementById('card-churn').textContent = (stats.quality.churnRate * 100).toFixed(1) + '%';
+    document.getElementById('card-streak').textContent = stats.timePatterns ? stats.timePatterns.longestStreak : 0;
   }
 
   // ============================================================
@@ -391,18 +491,22 @@
       value: d.added + d.deleted,
     }));
 
-    const width = 300;
-    const height = 300;
-    const radius = Math.min(width, height) / 2 - 20;
+    const size = 220;
+    const radius = size / 2 - 10;
 
     const colors = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
-    const svg = d3.select(container)
+    // 外层容器：饼图 + 图例水平排列
+    const wrapper = d3.select(container)
+      .append('div')
+      .attr('class', 'flex items-center gap-6');
+
+    const svg = wrapper
       .append('svg')
-      .attr('width', width)
-      .attr('height', height)
+      .attr('width', size)
+      .attr('height', size)
       .append('g')
-      .attr('transform', `translate(${width/2},${height/2})`);
+      .attr('transform', `translate(${size/2},${size/2})`);
 
     const pie = d3.pie().value(d => d.value).sort(null);
     const arc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius);
@@ -420,17 +524,18 @@
       })
       .on('mouseout', hideTooltip);
 
-    // 图例
-    const legend = d3.select(container)
+    // 图例：垂直排列在右侧
+    const legend = wrapper
       .append('div')
-      .attr('class', 'flex flex-wrap gap-2 mt-3 justify-center');
+      .attr('class', 'flex flex-col gap-2');
 
     data.forEach((d, i) => {
-      const item = legend.append('div').attr('class', 'flex items-center gap-1 text-xs');
+      const item = legend.append('div').attr('class', 'flex items-center gap-2 text-xs');
       item.append('div')
         .style('width', '10px')
         .style('height', '10px')
         .style('border-radius', '2px')
+        .style('flex-shrink', '0')
         .style('background', colors[i % colors.length]);
       item.append('span')
         .attr('class', 'text-slate-600 dark:text-slate-400')
@@ -583,6 +688,299 @@
     if (stats.lastCommitDate) {
       document.getElementById('stat-last-commit').textContent =
         new Date(stats.lastCommitDate).toLocaleDateString('zh-CN');
+    }
+  }
+
+  // ============================================================
+  // 周趋势图 (折线图)
+  // ============================================================
+  function renderWeeklyTrendChart() {
+    const container = document.getElementById('weekly-trend-chart');
+    container.innerHTML = '';
+
+    if (!stats.trends || !stats.trends.weeklyTrend || stats.trends.weeklyTrend.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = stats.trends.weeklyTrend;
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scalePoint().domain(data.map(d => d.week)).range([0, width]).padding(0.5);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.commits) || 1]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickValues(data.filter((_, i) => i % Math.ceil(data.length / 6) === 0).map(d => d.week)))
+      .selectAll('text').attr('fill', textColor).attr('font-size', '10px');
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    const line = d3.line().x(d => x(d.week)).y(d => y(d.commits)).curve(d3.curveMonotoneX);
+
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#0ea5e9')
+      .attr('stroke-width', 2)
+      .attr('d', line);
+
+    svg.selectAll('.dot')
+      .data(data)
+      .join('circle')
+      .attr('cx', d => x(d.week))
+      .attr('cy', d => y(d.commits))
+      .attr('r', 4)
+      .attr('fill', '#0ea5e9')
+      .on('mouseover', (event, d) => showTooltip(event, `${d.week}: ${d.commits} 次提交, +${formatNumber(d.linesAdded)} / -${formatNumber(d.linesDeleted)}`))
+      .on('mouseout', hideTooltip);
+  }
+
+  // ============================================================
+  // 累计代码量曲线 (面积图)
+  // ============================================================
+  function renderCumulativeChart() {
+    const container = document.getElementById('cumulative-chart');
+    container.innerHTML = '';
+
+    if (!stats.trends || !stats.trends.cumulativeLines || stats.trends.cumulativeLines.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = stats.trends.cumulativeLines;
+    const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scalePoint().domain(data.map(d => d.date)).range([0, width]).padding(0.5);
+    const yMin = d3.min(data, d => d.netLines) || 0;
+    const yMax = d3.max(data, d => d.netLines) || 1;
+    const y = d3.scaleLinear().domain([Math.min(0, yMin), yMax]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickValues(data.filter((_, i) => i % Math.ceil(data.length / 6) === 0).map(d => d.date)))
+      .selectAll('text').attr('fill', textColor).attr('font-size', '10px');
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d >= 1000 ? (d/1000).toFixed(0) + 'k' : d))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    const area = d3.area()
+      .x(d => x(d.date))
+      .y0(y(0))
+      .y1(d => y(d.netLines))
+      .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+      .datum(data)
+      .attr('fill', isDark() ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)')
+      .attr('stroke', '#22c55e')
+      .attr('stroke-width', 2)
+      .attr('d', area);
+  }
+
+  // ============================================================
+  // 周几分布 (柱状图)
+  // ============================================================
+  function renderWeekdayChart() {
+    const container = document.getElementById('weekday-chart');
+    container.innerHTML = '';
+
+    if (!stats.timePatterns || !stats.timePatterns.weekdayDistribution) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const data = stats.timePatterns.weekdayDistribution.map((count, i) => ({ day: weekdays[i], count }));
+
+    const margin = { top: 10, right: 10, bottom: 30, left: 40 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().domain(data.map(d => d.day)).range([0, width]).padding(0.3);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.count) || 1]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    svg.selectAll('.bar')
+      .data(data)
+      .join('rect')
+      .attr('x', d => x(d.day))
+      .attr('y', d => y(d.count))
+      .attr('width', x.bandwidth())
+      .attr('height', d => height - y(d.count))
+      .attr('fill', (_, i) => i >= 5 ? '#f59e0b' : '#8b5cf6')
+      .attr('rx', 2)
+      .on('mouseover', (event, d) => showTooltip(event, `${d.day}: ${d.count} 次提交`))
+      .on('mouseout', hideTooltip);
+  }
+
+  // ============================================================
+  // 提交类型分布 (甜甜圈图)
+  // ============================================================
+  function renderCommitTypeChart() {
+    const container = document.getElementById('commit-type-chart');
+    container.innerHTML = '';
+
+    if (!stats.messageStats || !stats.messageStats.typeDistribution) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const rawData = Object.entries(stats.messageStats.typeDistribution);
+    if (rawData.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = rawData.map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+
+    const size = 220;
+    const radius = size / 2 - 10;
+
+    const typeColors = {
+      feat: '#22c55e', fix: '#ef4444', docs: '#3b82f6', style: '#ec4899',
+      refactor: '#8b5cf6', test: '#f59e0b', chore: '#6b7280', perf: '#14b8a6',
+      ci: '#06b6d4', build: '#84cc16', revert: '#f43f5e', other: '#94a3b8'
+    };
+
+    const wrapper = d3.select(container)
+      .append('div')
+      .attr('class', 'flex items-center gap-6');
+
+    const svg = wrapper
+      .append('svg')
+      .attr('width', size)
+      .attr('height', size)
+      .append('g')
+      .attr('transform', `translate(${size/2},${size/2})`);
+
+    const pie = d3.pie().value(d => d.value).sort(null);
+    const arc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius);
+
+    svg.selectAll('path')
+      .data(pie(data))
+      .join('path')
+      .attr('d', arc)
+      .attr('fill', d => typeColors[d.data.name] || '#94a3b8')
+      .attr('stroke', isDark() ? '#1e293b' : '#fff')
+      .attr('stroke-width', 2)
+      .on('mouseover', (event, d) => {
+        const pct = ((d.data.value / d3.sum(data, x => x.value)) * 100).toFixed(1);
+        showTooltip(event, `${d.data.name}: ${d.data.value} 次 (${pct}%)`);
+      })
+      .on('mouseout', hideTooltip);
+
+    const legend = wrapper
+      .append('div')
+      .attr('class', 'flex flex-col gap-2');
+
+    data.forEach(d => {
+      const item = legend.append('div').attr('class', 'flex items-center gap-2 text-xs');
+      item.append('div')
+        .style('width', '10px')
+        .style('height', '10px')
+        .style('border-radius', '2px')
+        .style('flex-shrink', '0')
+        .style('background', typeColors[d.name] || '#94a3b8');
+      item.append('span')
+        .attr('class', 'text-slate-600 dark:text-slate-400')
+        .text(d.name);
+    });
+  }
+
+  // ============================================================
+  // 热点文件表格
+  // ============================================================
+  function renderHotFilesTable() {
+    const tbody = document.getElementById('hot-files-body');
+    tbody.innerHTML = '';
+
+    if (!stats.quality || !stats.quality.hotFiles || stats.quality.hotFiles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">暂无数据</td></tr>';
+      return;
+    }
+
+    for (const file of stats.quality.hotFiles) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs" title="${file.path}">${file.path}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.modifyCount}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.authors.length}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // 知识集中度风险表格
+  // ============================================================
+  function renderSoloFilesTable() {
+    const tbody = document.getElementById('solo-files-body');
+    tbody.innerHTML = '';
+
+    if (!stats.collaboration || !stats.collaboration.soloFiles || stats.collaboration.soloFiles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">暂无单人维护文件</td></tr>';
+      return;
+    }
+
+    for (const file of stats.collaboration.soloFiles) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs" title="${file.path}">${file.path}</td>
+        <td class="py-2 text-slate-600 dark:text-slate-400">${file.author}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.commits}</td>
+      `;
+      tbody.appendChild(tr);
     }
   }
 

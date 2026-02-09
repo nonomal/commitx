@@ -14,7 +14,7 @@ program
   .description('Git 提交统计工具，生成可视化 HTML 报告')
   .version('1.0.0')
   .argument('[directory]', '要扫描的目录路径', process.cwd())
-  .option('-p, --period <period>', '时间预设 (7d/1m/3m/6m/1y)', '3m')
+  .option('-p, --period <period>', '时间预设 (7d/1m/3m/6m/1y)', '1y')
   .option('-f, --from <date>', '起始日期 (YYYY-MM-DD)')
   .option('-t, --to <date>', '结束日期 (YYYY-MM-DD)')
   .option('-a, --author <name>', '过滤作者')

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "mcp__augment-context-engine__codebase-retrieval",
+      "Bash(pnpm build)"
     ]
   }
 }

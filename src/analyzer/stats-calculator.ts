@@ -5,6 +5,16 @@ import type {
   FileTypeStats,
   DirectoryStats,
   BusiestDay,
+  QualityMetrics,
+  TimePatterns,
+  TrendData,
+  CollaborationMetrics,
+  CommitMessageStats,
+  HotFile,
+  WeeklyPoint,
+  CumulativePoint,
+  SoloFile,
+  CollabFile,
 } from '../types/index.js';
 import { extname } from 'node:path';
 
@@ -158,6 +168,11 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     directories,
     hourlyDistribution,
     dailyHeatmap,
+    quality: calculateQualityMetrics(sorted),
+    timePatterns: calculateTimePatterns(sorted),
+    trends: calculateTrends(sorted),
+    collaboration: calculateCollaboration(sorted),
+    messageStats: calculateMessageStats(sorted),
   };
 }
 
@@ -241,6 +256,82 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
         merged.directories.push({ ...dir });
       }
     }
+
+    // 质量指标合并
+    merged.quality.avgFilesPerCommit += stats.quality.avgFilesPerCommit;
+    merged.quality.avgLinesPerCommit += stats.quality.avgLinesPerCommit;
+    merged.quality.churnRate += stats.quality.churnRate;
+    for (const hf of stats.quality.hotFiles) {
+      const existing = merged.quality.hotFiles.find((h) => h.path === hf.path);
+      if (existing) {
+        existing.modifyCount += hf.modifyCount;
+        for (const author of hf.authors) {
+          if (!existing.authors.includes(author)) {
+            existing.authors.push(author);
+          }
+        }
+      } else {
+        merged.quality.hotFiles.push({ ...hf, authors: [...hf.authors] });
+      }
+    }
+
+    // 时间模式合并
+    for (let i = 0; i < 7; i++) {
+      merged.timePatterns.weekdayDistribution[i] +=
+        stats.timePatterns.weekdayDistribution[i];
+    }
+
+    // 趋势数据合并
+    for (const wp of stats.trends.weeklyTrend) {
+      const existing = merged.trends.weeklyTrend.find((w) => w.week === wp.week);
+      if (existing) {
+        existing.commits += wp.commits;
+        existing.linesAdded += wp.linesAdded;
+        existing.linesDeleted += wp.linesDeleted;
+      } else {
+        merged.trends.weeklyTrend.push({ ...wp });
+      }
+    }
+    for (const cp of stats.trends.cumulativeLines) {
+      const existing = merged.trends.cumulativeLines.find(
+        (c) => c.date === cp.date
+      );
+      if (existing) {
+        existing.netLines += cp.netLines;
+      } else {
+        merged.trends.cumulativeLines.push({ ...cp });
+      }
+    }
+
+    // 协作指标合并
+    for (const sf of stats.collaboration.soloFiles) {
+      const existing = merged.collaboration.soloFiles.find(
+        (s) => s.path === sf.path
+      );
+      if (existing) {
+        existing.commits += sf.commits;
+      } else {
+        merged.collaboration.soloFiles.push({ ...sf });
+      }
+    }
+    for (const ch of stats.collaboration.collaborationHotspots) {
+      const existing = merged.collaboration.collaborationHotspots.find(
+        (c) => c.path === ch.path
+      );
+      if (existing) {
+        existing.totalCommits += ch.totalCommits;
+        existing.authorCount = Math.max(existing.authorCount, ch.authorCount);
+      } else {
+        merged.collaboration.collaborationHotspots.push({ ...ch });
+      }
+    }
+
+    // Commit Message 统计合并
+    for (const [type, count] of Object.entries(stats.messageStats.typeDistribution)) {
+      merged.messageStats.typeDistribution[type] =
+        (merged.messageStats.typeDistribution[type] || 0) + count;
+    }
+    merged.messageStats.avgMessageLength += stats.messageStats.avgMessageLength;
   }
 
   // 重新计算最繁忙的一天
@@ -260,6 +351,49 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
   merged.directories.sort((a, b) => b.linesChanged - a.linesChanged);
   merged.directories = merged.directories.slice(0, 10);
 
+  // 重新计算扩展字段的平均值和排序
+  const repoCount = statsList.length;
+  merged.quality.avgFilesPerCommit /= repoCount;
+  merged.quality.avgLinesPerCommit /= repoCount;
+  merged.quality.churnRate /= repoCount;
+  merged.quality.hotFiles.sort((a, b) => b.modifyCount - a.modifyCount);
+  merged.quality.hotFiles = merged.quality.hotFiles.slice(0, 10);
+
+  // 时间模式重新计算
+  const totalWeekdayCommits = merged.timePatterns.weekdayDistribution.reduce(
+    (a, b) => a + b,
+    0
+  );
+  if (totalWeekdayCommits > 0) {
+    merged.timePatterns.weekendCommits =
+      (merged.timePatterns.weekdayDistribution[5] +
+        merged.timePatterns.weekdayDistribution[6]) /
+      totalWeekdayCommits;
+  }
+
+  // 趋势数据排序
+  merged.trends.weeklyTrend.sort((a, b) => a.week.localeCompare(b.week));
+  merged.trends.cumulativeLines.sort((a, b) => a.date.localeCompare(b.date));
+
+  // 重新计算累计代码量
+  let cumulative = 0;
+  for (const point of merged.trends.cumulativeLines) {
+    cumulative += point.netLines;
+    point.netLines = cumulative;
+  }
+
+  // 协作指标排序
+  merged.collaboration.soloFiles.sort((a, b) => b.commits - a.commits);
+  merged.collaboration.soloFiles = merged.collaboration.soloFiles.slice(0, 10);
+  merged.collaboration.collaborationHotspots.sort(
+    (a, b) => b.totalCommits - a.totalCommits
+  );
+  merged.collaboration.collaborationHotspots =
+    merged.collaboration.collaborationHotspots.slice(0, 10);
+
+  // Commit Message 平均长度
+  merged.messageStats.avgMessageLength /= repoCount;
+
   return merged;
 }
 
@@ -278,6 +412,11 @@ function emptyStats(): CommitStats {
     directories: [],
     hourlyDistribution: new Array<number>(24).fill(0),
     dailyHeatmap: {},
+    quality: emptyQualityMetrics(),
+    timePatterns: emptyTimePatterns(),
+    trends: emptyTrendData(),
+    collaboration: emptyCollaborationMetrics(),
+    messageStats: emptyMessageStats(),
   };
 }
 
@@ -293,4 +432,350 @@ function formatDateKey(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+// ============================================================
+// 扩展统计计算函数
+// ============================================================
+
+/** 计算代码质量指标 */
+function calculateQualityMetrics(commits: CommitRecord[]): QualityMetrics {
+  if (commits.length === 0) {
+    return emptyQualityMetrics();
+  }
+
+  // 平均每次提交的文件数
+  const totalFiles = commits.reduce((sum, c) => sum + c.files.length, 0);
+  const avgFilesPerCommit = totalFiles / commits.length;
+
+  // 平均每次提交的行数
+  const totalLines = commits.reduce(
+    (sum, c) => sum + c.files.reduce((s, f) => s + f.added + f.deleted, 0),
+    0
+  );
+  const avgLinesPerCommit = totalLines / commits.length;
+
+  // 代码流失率
+  const totalAdded = commits.reduce(
+    (sum, c) => sum + c.files.reduce((s, f) => s + f.added, 0),
+    0
+  );
+  const totalDeleted = commits.reduce(
+    (sum, c) => sum + c.files.reduce((s, f) => s + f.deleted, 0),
+    0
+  );
+  const churnRate = totalAdded > 0 ? totalDeleted / totalAdded : 0;
+
+  // 热点文件
+  const fileModifyMap = new Map<string, { count: number; authors: Set<string> }>();
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      const entry = fileModifyMap.get(file.path) || { count: 0, authors: new Set() };
+      entry.count++;
+      entry.authors.add(commit.author);
+      fileModifyMap.set(file.path, entry);
+    }
+  }
+
+  const hotFiles: HotFile[] = Array.from(fileModifyMap.entries())
+    .map(([path, data]) => ({
+      path,
+      modifyCount: data.count,
+      authors: Array.from(data.authors),
+    }))
+    .sort((a, b) => b.modifyCount - a.modifyCount)
+    .slice(0, 10);
+
+  return { avgFilesPerCommit, avgLinesPerCommit, churnRate, hotFiles };
+}
+
+/** 计算时间模式指标 */
+function calculateTimePatterns(commits: CommitRecord[]): TimePatterns {
+  if (commits.length === 0) {
+    return emptyTimePatterns();
+  }
+
+  const weekdayDistribution = new Array<number>(7).fill(0);
+
+  for (const commit of commits) {
+    const day = commit.date.getDay(); // 0=周日
+    const idx = day === 0 ? 6 : day - 1; // 转为周一=0
+    weekdayDistribution[idx]++;
+  }
+
+  // 周末提交占比
+  const weekendCommits =
+    (weekdayDistribution[5] + weekdayDistribution[6]) / commits.length;
+
+  // 提交间隔
+  const sorted = [...commits].sort(
+    (a, b) => a.date.getTime() - b.date.getTime()
+  );
+  let totalInterval = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    totalInterval += sorted[i].date.getTime() - sorted[i - 1].date.getTime();
+  }
+  const avgCommitInterval =
+    sorted.length > 1 ? totalInterval / (sorted.length - 1) / 3600000 : 0;
+
+  // 连续提交天数
+  const { longestStreak, currentStreak } = calculateStreaks(sorted);
+
+  return {
+    weekdayDistribution,
+    weekendCommits,
+    avgCommitInterval,
+    longestStreak,
+    currentStreak,
+  };
+}
+
+/** 计算连续提交天数 */
+function calculateStreaks(sortedCommits: CommitRecord[]): {
+  longestStreak: number;
+  currentStreak: number;
+} {
+  if (sortedCommits.length === 0) {
+    return { longestStreak: 0, currentStreak: 0 };
+  }
+
+  // 提取唯一日期
+  const uniqueDates = new Set<string>();
+  for (const commit of sortedCommits) {
+    uniqueDates.add(formatDateKey(commit.date));
+  }
+
+  const sortedDates = Array.from(uniqueDates).sort();
+  if (sortedDates.length === 0) {
+    return { longestStreak: 0, currentStreak: 0 };
+  }
+
+  let longestStreak = 1;
+  let currentStreakCount = 1;
+  let tempStreak = 1;
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prevDate = new Date(sortedDates[i - 1]);
+    const currDate = new Date(sortedDates[i]);
+    const diffDays = Math.round(
+      (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 1) {
+      tempStreak++;
+    } else {
+      tempStreak = 1;
+    }
+
+    longestStreak = Math.max(longestStreak, tempStreak);
+  }
+
+  // 计算当前连续天数（从最后一天往前数）
+  const today = formatDateKey(new Date());
+  const lastCommitDate = sortedDates[sortedDates.length - 1];
+
+  // 如果最后提交日期是今天或昨天，计算当前连续
+  const lastDate = new Date(lastCommitDate);
+  const todayDate = new Date(today);
+  const daysSinceLastCommit = Math.round(
+    (todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysSinceLastCommit <= 1) {
+    currentStreakCount = 1;
+    for (let i = sortedDates.length - 2; i >= 0; i--) {
+      const currDate = new Date(sortedDates[i + 1]);
+      const prevDate = new Date(sortedDates[i]);
+      const diffDays = Math.round(
+        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (diffDays === 1) {
+        currentStreakCount++;
+      } else {
+        break;
+      }
+    }
+  } else {
+    currentStreakCount = 0;
+  }
+
+  return { longestStreak, currentStreak: currentStreakCount };
+}
+
+/** 获取 ISO 周标识 */
+function getWeekKey(date: Date): string {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+  );
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+/** 计算趋势数据 */
+function calculateTrends(commits: CommitRecord[]): TrendData {
+  if (commits.length === 0) {
+    return emptyTrendData();
+  }
+
+  // 周趋势
+  const weekMap = new Map<string, WeeklyPoint>();
+  for (const commit of commits) {
+    const week = getWeekKey(commit.date);
+    const entry = weekMap.get(week) || {
+      week,
+      commits: 0,
+      linesAdded: 0,
+      linesDeleted: 0,
+    };
+    entry.commits++;
+    for (const file of commit.files) {
+      entry.linesAdded += file.added;
+      entry.linesDeleted += file.deleted;
+    }
+    weekMap.set(week, entry);
+  }
+  const weeklyTrend = Array.from(weekMap.values()).sort((a, b) =>
+    a.week.localeCompare(b.week)
+  );
+
+  // 累计代码量
+  const dailyNet = new Map<string, number>();
+  for (const commit of commits) {
+    const dateKey = formatDateKey(commit.date);
+    const net = commit.files.reduce((sum, f) => sum + f.added - f.deleted, 0);
+    dailyNet.set(dateKey, (dailyNet.get(dateKey) || 0) + net);
+  }
+
+  let cumulative = 0;
+  const cumulativeLines: CumulativePoint[] = Array.from(dailyNet.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, net]) => {
+      cumulative += net;
+      return { date, netLines: cumulative };
+    });
+
+  return { weeklyTrend, cumulativeLines };
+}
+
+/** 计算协作指标 */
+function calculateCollaboration(commits: CommitRecord[]): CollaborationMetrics {
+  if (commits.length === 0) {
+    return emptyCollaborationMetrics();
+  }
+
+  const fileAuthors = new Map<string, Set<string>>();
+  const fileCommits = new Map<string, number>();
+
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      const authors = fileAuthors.get(file.path) || new Set();
+      authors.add(commit.email.toLowerCase());
+      fileAuthors.set(file.path, authors);
+      fileCommits.set(file.path, (fileCommits.get(file.path) || 0) + 1);
+    }
+  }
+
+  const soloFiles: SoloFile[] = [];
+  const collaborationHotspots: CollabFile[] = [];
+
+  for (const [path, authors] of fileAuthors) {
+    const commitCount = fileCommits.get(path) || 0;
+    if (authors.size === 1 && commitCount >= 3) {
+      soloFiles.push({
+        path,
+        author: Array.from(authors)[0],
+        commits: commitCount,
+      });
+    } else if (authors.size >= 2 && commitCount >= 5) {
+      collaborationHotspots.push({
+        path,
+        authorCount: authors.size,
+        totalCommits: commitCount,
+      });
+    }
+  }
+
+  return {
+    soloFiles: soloFiles.sort((a, b) => b.commits - a.commits).slice(0, 10),
+    collaborationHotspots: collaborationHotspots
+      .sort((a, b) => b.totalCommits - a.totalCommits)
+      .slice(0, 10),
+  };
+}
+
+/** 计算 Commit Message 统计 */
+function calculateMessageStats(commits: CommitRecord[]): CommitMessageStats {
+  if (commits.length === 0) {
+    return emptyMessageStats();
+  }
+
+  const typeDistribution: Record<string, number> = {};
+  let totalLength = 0;
+
+  const typeRegex =
+    /^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:/i;
+
+  for (const commit of commits) {
+    totalLength += commit.message.length;
+    const match = commit.message.match(typeRegex);
+    if (match) {
+      const type = match[1].toLowerCase();
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1;
+    } else {
+      typeDistribution['other'] = (typeDistribution['other'] || 0) + 1;
+    }
+  }
+
+  return {
+    typeDistribution,
+    avgMessageLength: totalLength / commits.length,
+  };
+}
+
+// ============================================================
+// 空值工厂函数
+// ============================================================
+
+function emptyQualityMetrics(): QualityMetrics {
+  return {
+    avgFilesPerCommit: 0,
+    avgLinesPerCommit: 0,
+    churnRate: 0,
+    hotFiles: [],
+  };
+}
+
+function emptyTimePatterns(): TimePatterns {
+  return {
+    weekdayDistribution: new Array<number>(7).fill(0),
+    weekendCommits: 0,
+    avgCommitInterval: 0,
+    longestStreak: 0,
+    currentStreak: 0,
+  };
+}
+
+function emptyTrendData(): TrendData {
+  return {
+    weeklyTrend: [],
+    cumulativeLines: [],
+  };
+}
+
+function emptyCollaborationMetrics(): CollaborationMetrics {
+  return {
+    soloFiles: [],
+    collaborationHotspots: [],
+  };
+}
+
+function emptyMessageStats(): CommitMessageStats {
+  return {
+    typeDistribution: {},
+    avgMessageLength: 0,
+  };
 }
