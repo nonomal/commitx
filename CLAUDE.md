@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-commitx - Git 提交统计 CLI 工具，递归扫描目录发现 Git 仓库，生成 D3.js 可视化 HTML 报告。
+commit-report - Git 提交统计 CLI 工具，递归扫描目录发现 Git 仓库，生成 D3.js 可视化 HTML 报告。
 
 ## Commands
 

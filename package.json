@@ -1,10 +1,10 @@
 {
-  "name": "commitx",
+  "name": "commit-report",
   "version": "1.0.0",
   "description": "Git 提交统计工具，生成可视化 HTML 报告",
   "type": "module",
   "bin": {
-    "commitx": "./dist/index.js"
+    "commit-report": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -22,7 +22,16 @@
     "report",
     "visualization"
   ],
+  "author": "qqzhangyanhua",
   "license": "MIT",
+  "homepage": "https://github.com/qqzhangyanhua/commitx#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qqzhangyanhua/commitx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qqzhangyanhua/commitx/issues"
+  },
   "engines": {
     "node": ">=18"
   },

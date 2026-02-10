@@ -10,7 +10,7 @@ import type { CliOptions, RepoInfo } from '../types/index.js';
 const program = new Command();
 
 program
-  .name('commitx')
+  .name('commit-report')
   .description('Git 提交统计工具，生成可视化 HTML 报告')
   .version('1.0.0')
   .argument('[directory]', '要扫描的目录路径', process.cwd())
@@ -18,7 +18,7 @@ program
   .option('-f, --from <date>', '起始日期 (YYYY-MM-DD)')
   .option('-t, --to <date>', '结束日期 (YYYY-MM-DD)')
   .option('-a, --author <name>', '过滤作者')
-  .option('-o, --output <file>', '输出文件名', 'commitx-report.html')
+  .option('-o, --output <file>', '输出文件名', 'commit-report.html')
   .option('--no-open', '不自动打开浏览器')
   .option('-d, --depth <number>', '最大扫描深度', '20')
   .action(async (directory: string, opts: CliOptions) => {

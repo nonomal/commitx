@@ -1,6 +1,14 @@
-# commitx
+# commit-report
+
+[![npm version](https://img.shields.io/npm/v/commit-report.svg)](https://www.npmjs.com/package/commit-report)
+[![license](https://img.shields.io/npm/l/commit-report.svg)](https://github.com/qqzhangyanhua/commitx/blob/main/LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-qqzhangyanhua%2Fcommitx-blue)](https://github.com/qqzhangyanhua/commitx)
 
 Git 提交统计工具，递归扫描目录中的 Git 仓库，生成可视化 HTML 报告。
+
+## 预览
+
+查看 [示例报告](https://github.com/qqzhangyanhua/commitx#readme) 了解可视化效果。
 
 ## 特性
 
@@ -14,38 +22,38 @@ Git 提交统计工具，递归扫描目录中的 Git 仓库，生成可视化 H
 
 ```bash
 # 全局安装
-npm install -g commitx
+npm install -g commit-report
 
 # 或直接使用 npx
-npx commitx
+npx commit-report
 ```
 
 ## 使用
 
 ```bash
 # 默认：扫描当前目录，统计最近 3 个月
-commitx
+commit-report
 
 # 指定时间预设
-commitx --period 7d      # 最近 7 天
-commitx --period 1m      # 最近 1 个月
-commitx --period 6m      # 最近 6 个月
-commitx --period 1y      # 最近 1 年
+commit-report --period 7d      # 最近 7 天
+commit-report --period 1m      # 最近 1 个月
+commit-report --period 6m      # 最近 6 个月
+commit-report --period 1y      # 最近 1 年
 
 # 自定义时间范围
-commitx --from 2024-01-01 --to 2024-06-30
+commit-report --from 2024-01-01 --to 2024-06-30
 
 # 指定目录
-commitx /path/to/projects
+commit-report /path/to/projects
 
 # 指定作者
-commitx --author "Alice"
+commit-report --author "Alice"
 
 # 自定义输出文件名
-commitx --output my-report.html
+commit-report --output my-report.html
 
 # 不自动打开浏览器
-commitx --no-open
+commit-report --no-open
 ```
 
 ## 参数
@@ -56,7 +64,7 @@ commitx --no-open
 | `--from` | `-f` | - | 起始日期 (YYYY-MM-DD) |
 | `--to` | `-t` | - | 结束日期 (YYYY-MM-DD) |
 | `--author` | `-a` | - | 过滤作者 |
-| `--output` | `-o` | `commitx-report.html` | 输出文件 |
+| `--output` | `-o` | `commit-report.html` | 输出文件 |
 | `--no-open` | - | `false` | 不打开浏览器 |
 | `--depth` | `-d` | `20` | 最大扫描深度 |
 
@@ -93,6 +101,16 @@ node dist/index.js --no-open /path/to/repos
 - D3.js (数据可视化)
 - Tailwind CSS (报告样式)
 
+## 问题反馈
+
+如果遇到问题或有功能建议，欢迎提交 [Issue](https://github.com/qqzhangyanhua/commitx/issues)。
+
 ## License
 
-MIT
+MIT © [qqzhangyanhua](https://github.com/qqzhangyanhua)
+
+## 链接
+
+- [GitHub 仓库](https://github.com/qqzhangyanhua/commitx)
+- [npm 包页面](https://www.npmjs.com/package/commit-report)
+- [问题追踪](https://github.com/qqzhangyanhua/commitx/issues)
