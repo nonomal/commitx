@@ -50,6 +50,7 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
   // 时间分布
   const hourlyDistribution = new Array<number>(24).fill(0);
   const dailyHeatmap: Record<string, number> = {};
+  const hourlyByAuthor: Map<number, Map<string, number>> = new Map(); // hour -> (author -> count)
 
   // 每日统计（用于计算最繁忙的一天）
   const dailyCounts = new Map<string, number>();
@@ -58,6 +59,13 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     // 时间分布
     const hour = commit.date.getHours();
     hourlyDistribution[hour]++;
+
+    // 按小时统计作者
+    if (!hourlyByAuthor.has(hour)) {
+      hourlyByAuthor.set(hour, new Map());
+    }
+    const hourAuthors = hourlyByAuthor.get(hour)!;
+    hourAuthors.set(commit.author, (hourAuthors.get(commit.author) || 0) + 1);
 
     const dateKey = formatDateKey(commit.date);
     dailyHeatmap[dateKey] = (dailyHeatmap[dateKey] || 0) + 1;
@@ -156,6 +164,21 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     .sort((a, b) => b.linesChanged - a.linesChanged)
     .slice(0, 10); // TOP 10
 
+  // 转换 hourlyByAuthor 为数组格式
+  const hourlyByAuthorArray = Array.from({ length: 24 }, (_, hour) => {
+    const authorMap = hourlyByAuthor.get(hour);
+    const authors: Record<string, number> = {};
+    if (authorMap) {
+      authorMap.forEach((count, author) => {
+        authors[author] = count;
+      });
+    }
+    return {
+      count: hourlyDistribution[hour],
+      authors,
+    };
+  });
+
   return {
     totalCommits: sorted.length,
     linesAdded: totalLinesAdded,
@@ -169,6 +192,7 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     directories,
     hourlyDistribution,
     dailyHeatmap,
+    hourlyByAuthor: hourlyByAuthorArray,
     quality: calculateQualityMetrics(sorted),
     timePatterns: calculateTimePatterns(sorted),
     trends: calculateTrends(sorted),
@@ -538,11 +562,19 @@ function calculateTimePatterns(commits: CommitRecord[]): TimePatterns {
   }
 
   const weekdayDistribution = new Array<number>(7).fill(0);
+  const weekdayByAuthor: Map<number, Map<string, number>> = new Map(); // weekday -> (author -> count)
 
   for (const commit of commits) {
     const day = commit.date.getDay(); // 0=周日
     const idx = day === 0 ? 6 : day - 1; // 转为周一=0
     weekdayDistribution[idx]++;
+
+    // 按周几统计作者
+    if (!weekdayByAuthor.has(idx)) {
+      weekdayByAuthor.set(idx, new Map());
+    }
+    const dayAuthors = weekdayByAuthor.get(idx)!;
+    dayAuthors.set(commit.author, (dayAuthors.get(commit.author) || 0) + 1);
   }
 
   // 周末提交占比
@@ -563,12 +595,28 @@ function calculateTimePatterns(commits: CommitRecord[]): TimePatterns {
   // 连续提交天数
   const { longestStreak, currentStreak } = calculateStreaks(sorted);
 
+  // 转换 weekdayByAuthor 为数组格式
+  const weekdayByAuthorArray = Array.from({ length: 7 }, (_, day) => {
+    const authorMap = weekdayByAuthor.get(day);
+    const authors: Record<string, number> = {};
+    if (authorMap) {
+      authorMap.forEach((count, author) => {
+        authors[author] = count;
+      });
+    }
+    return {
+      count: weekdayDistribution[day],
+      authors,
+    };
+  });
+
   return {
     weekdayDistribution,
     weekendCommits,
     avgCommitInterval,
     longestStreak,
     currentStreak,
+    weekdayByAuthor: weekdayByAuthorArray,
   };
 }
 

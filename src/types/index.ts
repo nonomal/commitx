@@ -63,6 +63,12 @@ export interface QualityMetrics {
   hotFiles: HotFile[];
 }
 
+/** 时间分布作者统计 */
+export interface TimeAuthorStats {
+  count: number;
+  authors: Record<string, number>; // 作者名 -> 提交数
+}
+
 /** 时间模式指标 */
 export interface TimePatterns {
   weekdayDistribution: number[];
@@ -70,6 +76,7 @@ export interface TimePatterns {
   avgCommitInterval: number;
   longestStreak: number;
   currentStreak: number;
+  weekdayByAuthor?: TimeAuthorStats[]; // 7个元素，对应周一到周日
 }
 
 /** 周趋势数据点 */
@@ -160,6 +167,7 @@ export interface CommitStats {
   // 时间分布
   hourlyDistribution: number[];
   dailyHeatmap: Record<string, number>;
+  hourlyByAuthor?: TimeAuthorStats[]; // 24个元素，对应0-23点
 
   // 扩展统计维度
   quality: QualityMetrics;

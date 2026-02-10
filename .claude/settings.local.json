@@ -5,7 +5,9 @@
       "mcp__augment-context-engine__codebase-retrieval",
       "Bash(pnpm build)",
       "Bash(node:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(verify-data.js:*)",
+      "Bash(verify-data.mjs:*)"
     ]
   }
 }
