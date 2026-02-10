@@ -35,29 +35,73 @@
       z-index: 100;
     }
     .dark .chart-tooltip { background: rgba(255,255,255,0.9); color: #1e293b; }
-    /* 高级分析 Tab 样式 */
+    /* 高级分析 Tab 样式 - 优化版 (Pill Style) */
+    .advanced-tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.375rem;
+      background: #f1f5f9;
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      scrollbar-width: none; /* Firefox */
+    }
+    .advanced-tabs-nav::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
+    }
+    .dark .advanced-tabs-nav {
+      background: #1e293b;
+    }
     .advanced-tab {
-      padding: 0.75rem 1.5rem;
-      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      border-radius: 0.5rem;
       font-weight: 500;
+      font-size: 0.875rem;
+      color: #64748b;
       transition: all 0.2s;
       white-space: nowrap;
       cursor: pointer;
+      border: none;
       background: transparent;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      color: inherit;
+      flex-shrink: 0;
+    }
+    .dark .advanced-tab {
+      color: #94a3b8;
+    }
+    .advanced-tab:hover {
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .dark .advanced-tab:hover {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
     }
     .advanced-tab.active {
+      background: #fff;
       color: #0ea5e9;
-      border-bottom-color: #0ea5e9;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
     }
-    .advanced-tab:hover:not(.active) {
-      background: rgba(14, 165, 233, 0.1);
+    .dark .advanced-tab.active {
+      background: #334155;
+      color: #38bdf8;
+      box-shadow: none;
+    }
+    .advanced-tab svg {
+      width: 1.125rem;
+      height: 1.125rem;
     }
     .advanced-tab-content.hidden {
       display: none;
+    }
+    /* 模块卡片动画 */
+    .fade-in-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -282,41 +326,121 @@
 
     <!-- 高级分析区域 -->
     <section id="advanced-analytics" class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
-      <h2 class="text-xl font-bold mb-6">📊 高级分析</h2>
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg text-primary-600 dark:text-primary-400">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold">高级分析</h2>
+      </div>
 
       <!-- Tab 导航 -->
-      <div class="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-        <button class="advanced-tab active" data-tab="team-health">团队健康度</button>
-        <button class="advanced-tab" data-tab="stability">代码稳定性</button>
-        <button class="advanced-tab" data-tab="work-pressure">工作压力</button>
-        <button class="advanced-tab" data-tab="contributor-churn">贡献者流失</button>
-        <button class="advanced-tab" data-tab="collaboration">协作热度</button>
+      <div class="advanced-tabs-nav mb-6">
+        <button class="advanced-tab active" data-tab="team-health">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          团队健康度
+        </button>
+        <button class="advanced-tab" data-tab="stability">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          代码稳定性
+        </button>
+        <button class="advanced-tab" data-tab="work-pressure">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          工作压力
+        </button>
+        <button class="advanced-tab" data-tab="contributor-churn">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          贡献者流失
+        </button>
+        <button class="advanced-tab" data-tab="collaboration">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          协作热度
+        </button>
       </div>
 
       <!-- Tab 内容容器 -->
-      <div id="team-health" class="advanced-tab-content">
-        <div id="bus-factor-gauge"></div>
-        <div id="critical-authors-list" class="mt-4"></div>
+      <div id="team-health" class="advanced-tab-content fade-in-up">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
+            <h3 class="text-lg font-semibold mb-6 text-slate-700 dark:text-slate-200">Bus Factor (巴士系数)</h3>
+            <div id="bus-factor-gauge"></div>
+            <p class="text-sm text-slate-500 text-center mt-4 max-w-xs">衡量项目对特定开发者的依赖程度，数值越低风险越高。</p>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 min-h-[300px]">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                关键人员 (Key Authors)
+             </h3>
+             <div id="critical-authors-list"></div>
+          </div>
+        </div>
       </div>
 
-      <div id="stability" class="advanced-tab-content hidden">
-        <div id="stability-chart"></div>
-        <div id="unstable-files-list" class="mt-4"></div>
+      <div id="stability" class="advanced-tab-content hidden fade-in-up">
+        <div id="stability-metrics" class="mb-6"></div>
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+           <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              文件流失率 TOP 20
+           </h3>
+           <div id="unstable-files-list"></div>
+        </div>
       </div>
 
-      <div id="work-pressure" class="advanced-tab-content hidden">
-        <div id="pressure-gauge"></div>
-        <div id="off-hours-breakdown" class="mt-4"></div>
+      <div id="work-pressure" class="advanced-tab-content hidden fade-in-up">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 flex flex-col items-center justify-center">
+              <h3 class="text-lg font-semibold mb-6 text-slate-700 dark:text-slate-200">压力评分</h3>
+              <div id="pressure-gauge"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">提交时间分布</h3>
+              <div id="off-hours-breakdown"></div>
+            </div>
+         </div>
       </div>
 
-      <div id="contributor-churn" class="advanced-tab-content hidden">
-        <div id="churn-funnel"></div>
-        <div id="author-status-list" class="mt-4"></div>
+      <div id="contributor-churn" class="advanced-tab-content hidden fade-in-up">
+        <div id="churn-metrics" class="mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">活跃度漏斗</h3>
+              <div id="churn-funnel"></div>
+           </div>
+           <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">作者状态列表</h3>
+              <div id="author-status-list"></div>
+           </div>
+        </div>
       </div>
 
-      <div id="collaboration" class="advanced-tab-content hidden">
-        <div id="coupling-network"></div>
-        <div id="file-pairs-list" class="mt-4"></div>
+      <div id="collaboration" class="advanced-tab-content hidden fade-in-up">
+        <div id="collaboration-metrics" class="mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">强耦合文件 (Tight Coupling)</h3>
+             <div id="file-pairs-list"></div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">结对编程检测</h3>
+             <div id="pair-programming-list"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1126,13 +1250,13 @@
     const tbody = document.getElementById('author-filetype-body');
     tbody.innerHTML = '';
 
-    if (!stats.authorFileTypes || stats.authorFileTypes.length === 0) {
+    if (!stats.authorFileTypeContributions || stats.authorFileTypeContributions.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">暂无数据</td></tr>';
       return;
     }
 
     // 排序数据
-    const sortedData = [...stats.authorFileTypes].sort((a, b) => {
+    const sortedData = [...stats.authorFileTypeContributions].sort((a, b) => {
       let valA = a[aftSortKey];
       let valB = b[aftSortKey];
       // 字符串比较
@@ -1223,19 +1347,19 @@
     const color = riskColors[riskLevel] || '#94a3b8';
 
     // SVG 尺寸
-    const width = 300;
-    const height = 200;
-    const radius = 100;
+    const width = 240; // 略微缩小以适应新布局
+    const height = 140;
+    const radius = 90;
 
     const svg = container.append('svg')
       .attr('width', width)
       .attr('height', height)
       .append('g')
-      .attr('transform', `translate(${width/2}, ${height - 20})`);
+      .attr('transform', `translate(${width/2}, ${height - 10})`);
 
     // 背景半圆（灰色）
     const bgArc = d3.arc()
-      .innerRadius(radius - 20)
+      .innerRadius(radius - 15)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(Math.PI / 2);
@@ -1243,7 +1367,7 @@
     svg.append('path')
       .attr('d', bgArc)
       .attr('fill', '#e2e8f0')
-      .attr('class', 'dark:fill-slate-700');
+      .attr('class', 'dark:fill-slate-600');
 
     // 前景半圆（根据风险等级）
     // 角度：low=0-60度, medium=60-120度, high=120-180度
@@ -1251,7 +1375,7 @@
     const targetAngle = angleMap[riskLevel] || 0;
 
     const foregroundArc = d3.arc()
-      .innerRadius(radius - 20)
+      .innerRadius(radius - 15)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(-Math.PI / 2 + targetAngle);
@@ -1262,33 +1386,25 @@
 
     // 中心文本 - Bus Factor 数值
     svg.append('text')
-      .attr('y', -30)
+      .attr('y', -25)
       .attr('text-anchor', 'middle')
-      .attr('class', 'text-4xl font-bold')
+      .attr('class', 'text-5xl font-bold')
       .attr('fill', color)
       .text(busFactor);
-
-    svg.append('text')
-      .attr('y', 0)
-      .attr('text-anchor', 'middle')
-      .attr('class', 'text-sm fill-slate-600 dark:fill-slate-400')
-      .text('Bus Factor');
 
     // 风险等级标签
     const riskLabels = { low: '低风险', medium: '中等风险', high: '高风险' };
     svg.append('text')
-      .attr('y', 20)
+      .attr('y', 0)
       .attr('text-anchor', 'middle')
-      .attr('class', 'text-xs')
-      .attr('fill', color)
+      .attr('class', 'text-sm font-medium fill-slate-500 dark:fill-slate-400')
       .text(riskLabels[riskLevel] || '');
 
     // 知识分布均匀度
-    svg.append('text')
-      .attr('y', 40)
-      .attr('text-anchor', 'middle')
-      .attr('class', 'text-xs fill-slate-500 dark:fill-slate-400')
-      .text(`知识分布: ${(knowledgeDistribution * 100).toFixed(0)}%`);
+    d3.select('#bus-factor-gauge')
+      .append('div')
+      .attr('class', 'text-center mt-2 text-xs text-slate-400')
+      .text(`知识分布均匀度: ${(knowledgeDistribution * 100).toFixed(0)}%`);
   }
 
   // 关键人员列表
@@ -1296,29 +1412,28 @@
     const container = document.getElementById('critical-authors-list');
 
     if (!criticalAuthors || criticalAuthors.length === 0) {
-      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">未检测到关键人员</p>';
+      container.innerHTML = '<div class="flex flex-col items-center justify-center h-40 text-slate-400"><p>未检测到关键人员</p><p class="text-xs mt-1">这意味着知识分布比较均匀</p></div>';
       return;
     }
 
-    let html = '<div class="overflow-x-auto">';
+    let html = '<div class="overflow-x-auto max-h-[300px] overflow-y-auto scrollbar-thin">';
     html += '<table class="w-full text-sm">';
-    html += '<thead>';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">';
     html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">知识评分</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">独有文件</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">主导文件</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium pl-2">姓名</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right">知识评分</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right">独有文件</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">主导文件</th>';
     html += '</tr>';
     html += '</thead>';
-    html += '<tbody>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
 
-    criticalAuthors.forEach((author, index) => {
-      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
-      html += `<tr class="${bgClass}">`;
-      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
-      html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">${author.knowledgeScore.toFixed(1)}</span></td>`;
+    criticalAuthors.forEach((author) => {
+      html += '<tr class="hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">';
+      html += `<td class="py-3 font-medium pl-2 text-slate-700 dark:text-slate-300">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">${author.knowledgeScore.toFixed(1)}</span></td>`;
       html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.uniqueFiles.length}</td>`;
-      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.dominantFiles.length}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 pr-2">${author.dominantFiles.length}</td>`;
       html += '</tr>';
     });
 
@@ -1357,38 +1472,61 @@
   // 稳定性指标卡片
   function renderStabilityCards(stabilityScore, revertRate, fixCommitRate, fileChurnRate) {
     const unstableCount = fileChurnRate.filter(f => f.isUnstable).length;
+    const container = document.getElementById('stability-metrics');
 
-    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">';
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+      </div>
+    `;
 
     // 稳定性评分
     const scoreColor = stabilityScore >= 80 ? 'text-emerald-500' :
                        stabilityScore >= 60 ? 'text-amber-500' : 'text-rose-500';
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold ${scoreColor}">${stabilityScore.toFixed(0)}</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">稳定性评分</div>';
-    html += '</div>';
+    html += createCard(
+      '稳定性评分',
+      stabilityScore.toFixed(0),
+      scoreColor,
+      'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+    );
 
     // Revert 率
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold text-violet-500">${(revertRate * 100).toFixed(1)}%</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Revert 率</div>';
-    html += '</div>';
+    html += createCard(
+      'Revert 率',
+      (revertRate * 100).toFixed(1) + '%',
+      'text-violet-500',
+      'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6'
+    );
 
     // Fix 提交率
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold text-orange-500">${(fixCommitRate * 100).toFixed(1)}%</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Fix 提交率</div>';
-    html += '</div>';
+    html += createCard(
+      'Fix 提交率',
+      (fixCommitRate * 100).toFixed(1) + '%',
+      'text-orange-500',
+      'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+    );
 
     // 不稳定文件数
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold text-rose-500">${unstableCount}</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">不稳定文件</div>';
-    html += '</div>';
+    html += createCard(
+      '不稳定文件',
+      unstableCount,
+      'text-rose-500',
+      'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+    );
 
     html += '</div>';
-
-    document.getElementById('stability-chart').innerHTML = html;
+    container.innerHTML = html;
   }
 
   // 文件流失率柱状图
@@ -1403,32 +1541,33 @@
     // 取 TOP 20
     const top20 = fileChurnRate.slice(0, 20);
 
-    let html = '<div class="mb-4"><h3 class="text-md font-semibold mb-3">文件流失率 TOP 20</h3></div>';
-    html += '<div class="space-y-2">';
+    let html = '<div class="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin pr-2">';
 
     top20.forEach(file => {
       const percentage = (file.churnRate * 100).toFixed(1);
       const isUnstable = file.isUnstable;
       const barColor = isUnstable ? 'bg-rose-500' : 'bg-primary-500';
-      const textColor = isUnstable ? 'text-rose-600 dark:text-rose-400' : '';
+      const textColor = isUnstable ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-700 dark:text-slate-300';
 
-      // 文件路径截断（最多显示 50 字符）
-      const displayPath = file.path.length > 50 ? '...' + file.path.slice(-47) : file.path;
+      // 文件路径截断
+      const displayPath = file.path.length > 60 ? '...' + file.path.slice(-57) : file.path;
 
-      html += '<div class="group">';
-      html += `<div class="flex items-center justify-between text-sm mb-1">`;
+      html += '<div class="group hover:bg-slate-100 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">';
+      html += `<div class="flex items-center justify-between text-sm mb-1.5">`;
       html += `<span class="font-mono text-xs ${textColor}" title="${escapeHtml(file.path)}">${escapeHtml(displayPath)}</span>`;
-      html += `<span class="text-slate-500 dark:text-slate-400">${percentage}%</span>`;
+      html += `<span class="text-xs font-medium ${isUnstable ? 'text-rose-500' : 'text-slate-500'}">${percentage}%</span>`;
       html += '</div>';
-      html += '<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">';
-      html += `<div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(percentage, 100)}%"></div>`;
+      html += '<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">';
+      html += `<div class="${barColor} h-1.5 rounded-full transition-all" style="width: ${Math.min(percentage, 100)}%"></div>`;
       html += '</div>';
-      html += `<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">修改 ${file.modifyCount} 次 · +${file.added.toLocaleString()} -${file.deleted.toLocaleString()}</div>`;
+      html += `<div class="text-[10px] text-slate-400 mt-1 flex gap-2">`;
+      html += `<span>修改 ${file.modifyCount} 次</span>`;
+      html += `<span><span class="text-emerald-500">+${formatNumber(file.added)}</span> / <span class="text-rose-500">-${formatNumber(file.deleted)}</span></span>`;
+      html += `</div>`;
       html += '</div>';
     });
 
     html += '</div>';
-
     container.innerHTML = html;
   }
 
@@ -1472,19 +1611,19 @@
     const color = getColor(pressureScore);
 
     // SVG 尺寸
-    const width = 300;
-    const height = 200;
-    const radius = 100;
+    const width = 240;
+    const height = 140;
+    const radius = 90;
 
     const svg = container.append('svg')
       .attr('width', width)
       .attr('height', height)
       .append('g')
-      .attr('transform', `translate(${width/2}, ${height - 20})`);
+      .attr('transform', `translate(${width/2}, ${height - 10})`);
 
     // 背景半圆（灰色）
     const bgArc = d3.arc()
-      .innerRadius(radius - 20)
+      .innerRadius(radius - 15)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(Math.PI / 2);
@@ -1492,13 +1631,13 @@
     svg.append('path')
       .attr('d', bgArc)
       .attr('fill', '#e2e8f0')
-      .attr('class', 'dark:fill-slate-700');
+      .attr('class', 'dark:fill-slate-600');
 
     // 前景半圆（根据压力评分）
     const targetAngle = -Math.PI / 2 + (Math.PI * pressureScore / 100);
 
     const foregroundArc = d3.arc()
-      .innerRadius(radius - 20)
+      .innerRadius(radius - 15)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(targetAngle);
@@ -1509,34 +1648,26 @@
 
     // 中心文本 - 压力评分
     svg.append('text')
-      .attr('y', -30)
+      .attr('y', -25)
       .attr('text-anchor', 'middle')
-      .attr('class', 'text-4xl font-bold')
+      .attr('class', 'text-5xl font-bold')
       .attr('fill', color)
       .text(pressureScore.toFixed(0));
-
-    svg.append('text')
-      .attr('y', 0)
-      .attr('text-anchor', 'middle')
-      .attr('class', 'text-sm fill-slate-600 dark:fill-slate-400')
-      .text('压力评分');
 
     // 压力等级标签
     const levelLabels = { low: '低压力', medium: '中等压力', high: '高压力' };
     const level = pressureScore < 30 ? 'low' : pressureScore < 60 ? 'medium' : 'high';
     svg.append('text')
-      .attr('y', 20)
+      .attr('y', 0)
       .attr('text-anchor', 'middle')
-      .attr('class', 'text-xs')
-      .attr('fill', color)
+      .attr('class', 'text-sm font-medium fill-slate-500 dark:fill-slate-400')
       .text(levelLabels[level]);
 
     // 非工作时间占比
-    svg.append('text')
-      .attr('y', 40)
-      .attr('text-anchor', 'middle')
-      .attr('class', 'text-xs fill-slate-500 dark:fill-slate-400')
-      .text(`非工作时间: ${(offHoursRate * 100).toFixed(1)}%`);
+    d3.select('#pressure-gauge')
+      .append('div')
+      .attr('class', 'text-center mt-2 text-xs text-slate-400')
+      .text(`非工作时间提交: ${(offHoursRate * 100).toFixed(1)}%`);
   }
 
   // 非工作时间分布
@@ -1547,56 +1678,55 @@
     const normalCommits = total - lateNightCommits - earlyMorningCommits - weekendCommits - holidayCommits.reduce((sum, h) => sum + h.commits, 0);
 
     const data = [
-      { label: '正常时间', count: normalCommits, color: '#10b981' },
-      { label: '深夜 (23:00-02:00)', count: lateNightCommits, color: '#8b5cf6' },
-      { label: '凌晨 (02:00-06:00)', count: earlyMorningCommits, color: '#ef4444' },
-      { label: '周末', count: weekendCommits, color: '#f59e0b' },
-      { label: '假期', count: holidayCommits.reduce((sum, h) => sum + h.commits, 0), color: '#ec4899' }
+      { label: '正常时间', count: normalCommits, color: '#10b981', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { label: '深夜 (23-02)', count: lateNightCommits, color: '#8b5cf6', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
+      { label: '凌晨 (02-06)', count: earlyMorningCommits, color: '#ef4444', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
+      { label: '周末', count: weekendCommits, color: '#f59e0b', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      { label: '假期', count: holidayCommits.reduce((sum, h) => sum + h.commits, 0), color: '#ec4899', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' }
     ].filter(d => d.count > 0);
 
-    // 使用卡片形式展示（简化实现，不使用 D3 饼图）
-    let html = '<div class="mb-6"><h3 class="text-md font-semibold mb-3">提交时间分布</h3></div>';
-    html += '<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">';
+    let html = '<div class="space-y-3">';
 
     data.forEach(item => {
       const percentage = ((item.count / total) * 100).toFixed(1);
-      html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-      html += `<div class="flex items-center gap-2 mb-2">`;
-      html += `<div class="w-3 h-3 rounded-full" style="background-color: ${item.color}"></div>`;
-      html += `<span class="text-sm text-slate-600 dark:text-slate-400">${item.label}</span>`;
-      html += '</div>';
-      html += `<div class="text-2xl font-bold" style="color: ${item.color}">${item.count}</div>`;
-      html += `<div class="text-xs text-slate-500 dark:text-slate-400">${percentage}%</div>`;
-      html += '</div>';
+      html += `
+        <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700/50">
+          <div class="flex items-center gap-3">
+             <div class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+               <svg class="w-5 h-5" style="color: ${item.color}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}" />
+               </svg>
+             </div>
+             <div>
+               <div class="text-sm font-medium text-slate-700 dark:text-slate-200">${item.label}</div>
+               <div class="text-xs text-slate-500 dark:text-slate-400">${item.count} 次提交</div>
+             </div>
+          </div>
+          <div class="text-right">
+             <div class="text-lg font-bold" style="color: ${item.color}">${percentage}%</div>
+          </div>
+        </div>
+      `;
     });
 
     html += '</div>';
 
     // 假期提交列表
     if (holidayCommits && holidayCommits.length > 0) {
-      html += '<div class="mt-6"><h3 class="text-md font-semibold mb-3">假期提交记录</h3></div>';
-      html += '<div class="overflow-x-auto">';
-      html += '<table class="w-full text-sm">';
-      html += '<thead>';
-      html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
-      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">日期</th>';
-      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">假期名称</th>';
-      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交数</th>';
-      html += '</tr>';
-      html += '</thead>';
-      html += '<tbody>';
+      html += '<div class="mt-6"><h4 class="text-sm font-semibold mb-2 text-slate-600 dark:text-slate-300">假期提交记录</h4></div>';
+      html += '<div class="space-y-2 max-h-[150px] overflow-y-auto scrollbar-thin">';
 
-      holidayCommits.forEach((holiday, index) => {
-        const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
-        html += `<tr class="${bgClass}">`;
-        html += `<td class="py-3">${holiday.date}</td>`;
-        html += `<td class="py-3">${escapeHtml(holiday.holidayName)}</td>`;
-        html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded">${holiday.commits}</span></td>`;
-        html += '</tr>';
+      holidayCommits.forEach((holiday) => {
+        html += `
+          <div class="flex items-center justify-between text-sm py-2 px-3 bg-rose-50 dark:bg-rose-900/10 rounded-lg border border-rose-100 dark:border-rose-900/20">
+             <span class="text-rose-700 dark:text-rose-300 font-medium">${escapeHtml(holiday.holidayName)}</span>
+             <div class="flex items-center gap-3">
+               <span class="text-xs text-slate-500">${holiday.date}</span>
+               <span class="bg-rose-200 dark:bg-rose-800 text-rose-800 dark:text-rose-100 px-2 py-0.5 rounded text-xs">${holiday.commits}</span>
+             </div>
+          </div>
+        `;
       });
-
-      html += '</tbody>';
-      html += '</table>';
       html += '</div>';
     }
 
@@ -1634,89 +1764,108 @@
 
   // 关键指标卡片
   function renderChurnMetrics(churnRate, retentionRate, growthRate, newJoinersCount) {
-    const container = document.getElementById('churn-funnel');
+    const container = document.getElementById('churn-metrics');
 
-    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">';
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+      </div>
+    `;
 
     // 流失率
     const churnColor = churnRate > 0.3 ? 'text-rose-500' : churnRate > 0.15 ? 'text-amber-500' : 'text-emerald-500';
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold ${churnColor}">${(churnRate * 100).toFixed(1)}%</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">流失率</div>';
-    html += '</div>';
+    html += createCard(
+      '流失率',
+      (churnRate * 100).toFixed(1) + '%',
+      churnColor,
+      'M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6'
+    );
 
     // 留存率
     const retentionColor = retentionRate > 0.7 ? 'text-emerald-500' : retentionRate > 0.4 ? 'text-amber-500' : 'text-rose-500';
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold ${retentionColor}">${(retentionRate * 100).toFixed(1)}%</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">留存率</div>';
-    html += '</div>';
+    html += createCard(
+      '留存率',
+      (retentionRate * 100).toFixed(1) + '%',
+      retentionColor,
+      'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'
+    );
 
     // 增长率
     const growthColor = growthRate > 0.2 ? 'text-emerald-500' : growthRate > 0 ? 'text-amber-500' : 'text-slate-500';
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold ${growthColor}">${(growthRate * 100).toFixed(1)}%</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">增长率</div>';
-    html += '</div>';
+    html += createCard(
+      '增长率',
+      (growthRate * 100).toFixed(1) + '%',
+      growthColor,
+      'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+    );
 
     // 新加入者数
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold text-primary-500">${newJoinersCount}</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">新加入者</div>';
-    html += '</div>';
+    html += createCard(
+      '新加入者',
+      newJoinersCount,
+      'text-primary-500',
+      'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'
+    );
 
     html += '</div>';
-
     container.innerHTML = html;
   }
 
   // 漏斗图（4级分类）
   function renderChurnFunnel(activeCount, occasionalCount, dormantCount, lostCount) {
     const container = document.getElementById('churn-funnel');
-    const currentHTML = container.innerHTML;
-
     const total = activeCount + occasionalCount + dormantCount + lostCount;
+    
     if (total === 0) {
-      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无贡献者数据</p>';
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无贡献者数据</p>';
       return;
     }
 
     const levels = [
-      { label: '活跃 (Active)', count: activeCount, color: '#10b981', desc: '<30天内有提交' },
+      { label: '活跃 (Active)', count: activeCount, color: '#10b981', desc: '<30天' },
       { label: '偶尔 (Occasional)', count: occasionalCount, color: '#f59e0b', desc: '30-90天' },
       { label: '休眠 (Dormant)', count: dormantCount, color: '#fb923c', desc: '90-180天' },
       { label: '流失 (Lost)', count: lostCount, color: '#ef4444', desc: '>180天' }
     ];
 
-    let html = currentHTML;
-    html += '<div class="mt-6 mb-4"><h3 class="text-md font-semibold">贡献者活跃度分布</h3></div>';
-    html += '<div class="space-y-3">';
+    let html = '<div class="space-y-4 py-4">';
 
     levels.forEach((level, index) => {
       const percentage = ((level.count / total) * 100).toFixed(1);
-      const width = Math.max(20, 100 - index * 15); // 漏斗宽度递减
-
-      html += '<div class="flex items-center gap-4">';
-      html += '<div class="flex-1">';
-      html += `<div class="flex items-center justify-between text-sm mb-1">`;
-      html += `<div class="flex items-center gap-2">`;
-      html += `<div class="w-3 h-3 rounded-full" style="background-color: ${level.color}"></div>`;
-      html += `<span class="font-medium">${level.label}</span>`;
-      html += `<span class="text-slate-500 dark:text-slate-400 text-xs">${level.desc}</span>`;
-      html += '</div>';
-      html += `<span class="text-slate-600 dark:text-slate-400">${level.count} 人 (${percentage}%)</span>`;
-      html += '</div>';
-      html += `<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex items-center justify-center" style="width: ${width}%">`;
-      html += `<div class="h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style="width: 100%; background-color: ${level.color}">`;
-      html += `${level.count}`;
-      html += '</div>';
-      html += '</div>';
-      html += '</div>';
-      html += '</div>';
+      const width = Math.max(30, 100 - index * 15); // 漏斗宽度递减
+      
+      html += `<div class="relative flex justify-center">`;
+      html += `  <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">`;
+      html += `     <div style="width: ${width}%; background-color: ${level.color};" class="h-full rounded-lg"></div>`;
+      html += `  </div>`;
+      html += `  <div class="w-full max-w-md flex items-center justify-between px-4 py-2 relative z-10">`;
+      html += `    <div class="flex items-center gap-3">`;
+      html += `      <div class="w-2.5 h-2.5 rounded-full" style="background-color: ${level.color}"></div>`;
+      html += `      <div>`;
+      html += `        <div class="text-sm font-medium text-slate-700 dark:text-slate-200">${level.label}</div>`;
+      html += `        <div class="text-[10px] text-slate-400">${level.desc}</div>`;
+      html += `      </div>`;
+      html += `    </div>`;
+      html += `    <div class="text-right">`;
+      html += `      <div class="text-lg font-bold" style="color: ${level.color}">${level.count}</div>`;
+      html += `      <div class="text-xs text-slate-400">${percentage}%</div>`;
+      html += `    </div>`;
+      html += `  </div>`;
+      html += `</div>`;
     });
 
     html += '</div>';
-
     container.innerHTML = html;
   }
 
@@ -1725,10 +1874,10 @@
     const container = document.getElementById('author-status-list');
 
     const allAuthors = [
-      ...active.map(a => ({ ...a, status: '活跃', statusColor: 'emerald' })),
-      ...occasional.map(a => ({ ...a, status: '偶尔', statusColor: 'amber' })),
-      ...dormant.map(a => ({ ...a, status: '休眠', statusColor: 'orange' })),
-      ...lost.map(a => ({ ...a, status: '流失', statusColor: 'rose' }))
+      ...active.map(a => ({ ...a, status: '活跃', statusColor: 'emerald', statusBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' })),
+      ...occasional.map(a => ({ ...a, status: '偶尔', statusColor: 'amber', statusBg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' })),
+      ...dormant.map(a => ({ ...a, status: '休眠', statusColor: 'orange', statusBg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' })),
+      ...lost.map(a => ({ ...a, status: '流失', statusColor: 'rose', statusBg: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' }))
     ];
 
     if (allAuthors.length === 0) {
@@ -1737,32 +1886,27 @@
     }
 
     // 按最后提交日期降序排序
-    allAuthors.sort((a, b) => b.lastCommitDate.getTime() - a.lastCommitDate.getTime());
+    allAuthors.sort((a, b) => new Date(b.lastCommitDate).getTime() - new Date(a.lastCommitDate).getTime());
 
-    let html = '<div class="mt-6"><h3 class="text-md font-semibold mb-3">作者活跃状态</h3></div>';
-    html += '<div class="overflow-x-auto">';
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
     html += '<table class="w-full text-sm">';
-    html += '<thead>';
-    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">状态</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">最后活跃</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">距今天数</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">总提交数</th>';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium">状态</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">上次活跃</th>';
     html += '</tr>';
     html += '</thead>';
-    html += '<tbody>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
 
-    allAuthors.forEach((author, index) => {
-      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
-      const lastCommitDate = new Date(author.lastCommitDate).toLocaleDateString('zh-CN');
-
-      html += `<tr class="${bgClass}">`;
-      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
-      html += `<td class="py-3"><span class="px-2 py-1 bg-${author.statusColor}-100 dark:bg-${author.statusColor}-900/30 text-${author.statusColor}-700 dark:text-${author.statusColor}-300 rounded text-xs">${author.status}</span></td>`;
-      html += `<td class="py-3 text-slate-600 dark:text-slate-400">${lastCommitDate}</td>`;
-      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.daysSinceLastCommit}</td>`;
-      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.totalCommits}</td>`;
+    allAuthors.forEach((author) => {
+      const days = author.daysSinceLastCommit;
+      const daysText = days === 0 ? '今天' : `${days}天前`;
+      
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-2.5 pl-2 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[100px]" title="${escapeHtml(author.name)}">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-2.5"><span class="px-2 py-0.5 rounded text-xs font-medium ${author.statusBg}">${author.status}</span></td>`;
+      html += `<td class="py-2.5 text-right text-slate-500 dark:text-slate-400 text-xs">${daysText}</td>`;
       html += '</tr>';
     });
 
@@ -1792,7 +1936,7 @@
     const { tightCoupling, pairProgramming, couplingScore } = collaboration;
 
     // 1. 渲染耦合评分卡片
-    renderCouplingScoreCard(couplingScore, tightCoupling);
+    renderCollaborationMetrics(couplingScore, tightCoupling);
 
     // 2. 渲染文件耦合列表
     renderFileCouplingList(tightCoupling);
@@ -1802,29 +1946,49 @@
   }
 
   // 耦合评分卡片
-  function renderCouplingScoreCard(couplingScore, tightCoupling) {
-    const container = document.getElementById('coupling-network');
+  function renderCollaborationMetrics(couplingScore, tightCoupling) {
+    const container = document.getElementById('collaboration-metrics');
 
     const highCouplingCount = tightCoupling.filter(f => f.coupling > 0.7).length;
 
     const scoreColor = couplingScore < 30 ? 'text-emerald-500' :
                        couplingScore < 60 ? 'text-amber-500' : 'text-rose-500';
 
-    let html = '<div class="grid grid-cols-2 gap-4 mb-6">';
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, desc, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+        <div class="text-xs text-slate-400 mt-1">${desc}</div>
+      </div>
+    `;
 
     // 耦合评分
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold ${scoreColor}">${couplingScore.toFixed(0)}</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">耦合评分</div>';
-    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">分数越低越好</div>';
-    html += '</div>';
+    html += createCard(
+      '耦合评分',
+      couplingScore.toFixed(0),
+      scoreColor,
+      '分数越低越好',
+      'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1'
+    );
 
     // 高耦合文件对数量
-    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
-    html += `<div class="text-3xl font-bold text-rose-500">${highCouplingCount}</div>`;
-    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">高耦合文件对</div>';
-    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">耦合度 >70%</div>';
-    html += '</div>';
+    html += createCard(
+      '高耦合文件对',
+      highCouplingCount,
+      'text-rose-500',
+      '耦合度 >70%',
+      'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'
+    );
 
     html += '</div>';
 
@@ -1833,46 +1997,46 @@
 
   // 文件耦合列表（TOP 20）
   function renderFileCouplingList(tightCoupling) {
-    const container = document.getElementById('coupling-network');
-    const currentHTML = container.innerHTML;
+    const container = document.getElementById('file-pairs-list');
 
     if (!tightCoupling || tightCoupling.length === 0) {
-      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无文件耦合数据</p>';
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无文件耦合数据</p>';
       return;
     }
 
     // 取 TOP 20
     const top20 = tightCoupling.slice(0, 20);
 
-    let html = currentHTML;
-    html += '<div class="mt-6"><h3 class="text-md font-semibold mb-3">文件耦合关系 TOP 20</h3></div>';
-    html += '<div class="overflow-x-auto">';
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
     html += '<table class="w-full text-sm">';
-    html += '<thead>';
-    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 1</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 2</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同提交次数</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">耦合度</th>';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">文件对</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">共同提交</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">耦合度</th>';
     html += '</tr>';
     html += '</thead>';
-    html += '<tbody>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
 
-    top20.forEach((pair, index) => {
-      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+    top20.forEach((pair) => {
       const couplingPercentage = (pair.coupling * 100).toFixed(1);
       const isHighCoupling = pair.coupling > 0.7;
-      const couplingColor = isHighCoupling ? 'text-rose-600 dark:text-rose-400' : '';
+      const couplingColor = isHighCoupling ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400';
+      const badgeBg = isHighCoupling ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-slate-100 dark:bg-slate-700';
 
       // 文件路径截断
-      const displayPath1 = pair.file1.length > 40 ? '...' + pair.file1.slice(-37) : pair.file1;
-      const displayPath2 = pair.file2.length > 40 ? '...' + pair.file2.slice(-37) : pair.file2;
+      const displayPath1 = pair.file1.length > 30 ? '...' + pair.file1.slice(-27) : pair.file1;
+      const displayPath2 = pair.file2.length > 30 ? '...' + pair.file2.slice(-27) : pair.file2;
 
-      html += `<tr class="${bgClass}">`;
-      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file1)}">${escapeHtml(displayPath1)}</td>`;
-      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file2)}">${escapeHtml(displayPath2)}</td>`;
-      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.coOccurrence}</td>`;
-      html += `<td class="py-3 text-right ${couplingColor}"><span class="px-2 py-1 ${isHighCoupling ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300' : ''} rounded">${couplingPercentage}%</span></td>`;
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-3 pl-2">
+         <div class="flex flex-col gap-1">
+            <span class="font-mono text-xs text-slate-600 dark:text-slate-300" title="${escapeHtml(pair.file1)}">${escapeHtml(displayPath1)}</span>
+            <span class="font-mono text-xs text-slate-400" title="${escapeHtml(pair.file2)}">↳ ${escapeHtml(displayPath2)}</span>
+         </div>
+      </td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 text-xs">${pair.coOccurrence}</td>`;
+      html += `<td class="py-3 text-right pr-2"><span class="px-2 py-0.5 ${badgeBg} ${couplingColor} rounded text-xs">${couplingPercentage}%</span></td>`;
       html += '</tr>';
     });
 
@@ -1885,34 +2049,35 @@
 
   // 结对编程检测列表
   function renderPairProgrammingList(pairProgramming) {
-    const container = document.getElementById('file-pairs-list');
+    const container = document.getElementById('pair-programming-list');
 
     if (!pairProgramming || pairProgramming.length === 0) {
-      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">未检测到结对编程模式</p>';
+      container.innerHTML = '<div class="flex flex-col items-center justify-center h-40 text-slate-400"><p>未检测到明显的结对编程模式</p><p class="text-xs mt-1">需共同修改 ≥3 个文件</p></div>';
       return;
     }
 
-    let html = '<div class="mb-4"><h3 class="text-md font-semibold">结对编程检测 (共同修改 ≥3 个文件)</h3></div>';
-    html += '<div class="overflow-x-auto">';
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
     html += '<table class="w-full text-sm">';
-    html += '<thead>';
-    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 1</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 2</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同文件数</th>';
-    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">协作次数</th>';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">协作成员</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">共同文件</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">协作次数</th>';
     html += '</tr>';
     html += '</thead>';
-    html += '<tbody>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
 
-    pairProgramming.forEach((pair, index) => {
-      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
-
-      html += `<tr class="${bgClass}">`;
-      html += `<td class="py-3 font-medium">${escapeHtml(pair.author1)}</td>`;
-      html += `<td class="py-3 font-medium">${escapeHtml(pair.author2)}</td>`;
-      html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">${pair.sharedFiles.length}</span></td>`;
-      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.collaborationCount}</td>`;
+    pairProgramming.forEach((pair) => {
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-3 pl-2">
+        <div class="flex items-center gap-2">
+           <span class="font-medium text-slate-700 dark:text-slate-200">${escapeHtml(pair.author1)}</span>
+           <span class="text-slate-400 text-xs">+</span>
+           <span class="font-medium text-slate-700 dark:text-slate-200">${escapeHtml(pair.author2)}</span>
+        </div>
+      </td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">${pair.sharedFiles.length}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 pr-2">${pair.collaborationCount}</td>`;
       html += '</tr>';
     });
 

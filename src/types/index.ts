@@ -118,6 +118,17 @@ export interface CommitMessageStats {
   avgMessageLength: number;
 }
 
+/** 作者文件类型贡献 */
+export interface AuthorFileTypeContribution {
+  author: string;
+  email: string;
+  extension: string;
+  linesAdded: number;
+  linesDeleted: number;
+  commits: number;
+  fileCount: number;
+}
+
 /** 最繁忙的一天 */
 export interface BusiestDay {
   date: string;
@@ -156,6 +167,7 @@ export interface CommitStats {
   trends: TrendData;
   collaboration: CollaborationMetrics;
   messageStats: CommitMessageStats;
+  authorFileTypeContributions: AuthorFileTypeContribution[];
 
   // 高级统计（可选，向后兼容）
   teamHealth?: TeamHealthMetrics;

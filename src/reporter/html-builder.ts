@@ -38,6 +38,11 @@ export async function buildHtml(
  * Date 对象转为 ISO 字符串
  */
 function serializeStats(stats: CommitStats): Record<string, unknown> {
+  const serializeAuthorDetail = (author: { lastCommitDate: Date; [key: string]: unknown }) => ({
+    ...author,
+    lastCommitDate: author.lastCommitDate.toISOString(),
+  });
+
   return {
     ...stats,
     firstCommitDate: stats.firstCommitDate.toISOString(),
@@ -46,6 +51,16 @@ function serializeStats(stats: CommitStats): Record<string, unknown> {
       ...a,
       lastActiveDate: a.lastActiveDate.toISOString(),
     })),
+    contributorChurn: stats.contributorChurn
+      ? {
+          ...stats.contributorChurn,
+          active: stats.contributorChurn.active.map(serializeAuthorDetail),
+          occasional: stats.contributorChurn.occasional.map(serializeAuthorDetail),
+          dormant: stats.contributorChurn.dormant.map(serializeAuthorDetail),
+          lost: stats.contributorChurn.lost.map(serializeAuthorDetail),
+          newJoiners: stats.contributorChurn.newJoiners.map(serializeAuthorDetail),
+        }
+      : undefined,
   };
 }
 

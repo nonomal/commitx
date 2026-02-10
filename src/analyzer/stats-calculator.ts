@@ -10,6 +10,7 @@ import type {
   TrendData,
   CollaborationMetrics,
   CommitMessageStats,
+  AuthorFileTypeContribution,
   HotFile,
   WeeklyPoint,
   CumulativePoint,
@@ -173,6 +174,7 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     trends: calculateTrends(sorted),
     collaboration: calculateCollaboration(sorted),
     messageStats: calculateMessageStats(sorted),
+    authorFileTypeContributions: calculateAuthorFileTypeContributions(sorted),
   };
 }
 
@@ -394,6 +396,30 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
   // Commit Message 平均长度
   merged.messageStats.avgMessageLength /= repoCount;
 
+  // 作者文件类型贡献合并
+  const contributionMap = new Map<string, AuthorFileTypeContribution>();
+  for (const stats of statsList) {
+    for (const contrib of stats.authorFileTypeContributions) {
+      const key = `${contrib.email.toLowerCase()}|||${contrib.extension}`;
+      const existing = contributionMap.get(key);
+      if (existing) {
+        existing.linesAdded += contrib.linesAdded;
+        existing.linesDeleted += contrib.linesDeleted;
+        existing.commits += contrib.commits;
+        existing.fileCount += contrib.fileCount;
+      } else {
+        contributionMap.set(key, { ...contrib });
+      }
+    }
+  }
+  merged.authorFileTypeContributions = Array.from(contributionMap.values())
+    .sort((a, b) => {
+      const totalA = a.linesAdded + a.linesDeleted;
+      const totalB = b.linesAdded + b.linesDeleted;
+      return totalB - totalA;
+    })
+    .slice(0, 20);
+
   // ============================================================
   // 高级统计字段不进行多仓库合并
   // ============================================================
@@ -432,6 +458,7 @@ function emptyStats(): CommitStats {
     trends: emptyTrendData(),
     collaboration: emptyCollaborationMetrics(),
     messageStats: emptyMessageStats(),
+    authorFileTypeContributions: [],
   };
 }
 
@@ -749,6 +776,76 @@ function calculateMessageStats(commits: CommitRecord[]): CommitMessageStats {
     typeDistribution,
     avgMessageLength: totalLength / commits.length,
   };
+}
+
+/** 计算作者文件类型贡献 */
+function calculateAuthorFileTypeContributions(
+  commits: CommitRecord[]
+): AuthorFileTypeContribution[] {
+  if (commits.length === 0) {
+    return [];
+  }
+
+  // 数据结构: Map<author-email-extension, contribution>
+  const contributionMap = new Map<string, AuthorFileTypeContribution>();
+
+  // 跟踪每个作者-扩展名组合修改的唯一文件
+  const uniqueFilesMap = new Map<string, Set<string>>();
+
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      const ext = extname(file.path).toLowerCase() || '(无扩展名)';
+      const key = `${commit.email.toLowerCase()}|||${ext}`;
+
+      let contribution = contributionMap.get(key);
+      if (!contribution) {
+        contribution = {
+          author: commit.author,
+          email: commit.email,
+          extension: ext,
+          linesAdded: 0,
+          linesDeleted: 0,
+          commits: 0,
+          fileCount: 0,
+        };
+        contributionMap.set(key, contribution);
+        uniqueFilesMap.set(key, new Set());
+      }
+
+      contribution.linesAdded += file.added;
+      contribution.linesDeleted += file.deleted;
+      uniqueFilesMap.get(key)!.add(file.path);
+    }
+  }
+
+  // 统计每个组合的提交数（去重）
+  const commitCountMap = new Map<string, Set<string>>();
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      const ext = extname(file.path).toLowerCase() || '(无扩展名)';
+      const key = `${commit.email.toLowerCase()}|||${ext}`;
+
+      if (!commitCountMap.has(key)) {
+        commitCountMap.set(key, new Set());
+      }
+      commitCountMap.get(key)!.add(commit.hash);
+    }
+  }
+
+  // 更新 commits 和 fileCount
+  for (const [key, contribution] of contributionMap) {
+    contribution.commits = commitCountMap.get(key)?.size || 0;
+    contribution.fileCount = uniqueFilesMap.get(key)?.size || 0;
+  }
+
+  // 按总变更行数（增+删）降序排序，取 TOP 20
+  return Array.from(contributionMap.values())
+    .sort((a, b) => {
+      const totalA = a.linesAdded + a.linesDeleted;
+      const totalB = b.linesAdded + b.linesDeleted;
+      return totalB - totalA;
+    })
+    .slice(0, 20);
 }
 
 // ============================================================
