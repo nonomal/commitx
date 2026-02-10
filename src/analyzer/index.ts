@@ -2,6 +2,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { parseGitLog } from './git-log-parser.js';
 import { calculateStats, mergeStats } from './stats-calculator.js';
+import { calculateAdvancedStats } from './advanced/index.js';
 import type { AnalyzeOptions, CommitStats } from '../types/index.js';
 
 /**
@@ -27,7 +28,17 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
       }
 
       const stats = calculateStats(commits);
-      allStats.push(stats);
+
+      // 新增：计算高级统计
+      const advancedStats = calculateAdvancedStats(commits);
+
+      // 合并核心统计和高级统计
+      const fullStats: CommitStats = {
+        ...stats,
+        ...advancedStats,
+      };
+
+      allStats.push(fullStats);
     } catch (error) {
       spinner.warn(
         chalk.yellow(
