@@ -35,6 +35,30 @@
       z-index: 100;
     }
     .dark .chart-tooltip { background: rgba(255,255,255,0.9); color: #1e293b; }
+    /* 高级分析 Tab 样式 */
+    .advanced-tab {
+      padding: 0.75rem 1.5rem;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+      cursor: pointer;
+      background: transparent;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      color: inherit;
+    }
+    .advanced-tab.active {
+      color: #0ea5e9;
+      border-bottom-color: #0ea5e9;
+    }
+    .advanced-tab:hover:not(.active) {
+      background: rgba(14, 165, 233, 0.1);
+    }
+    .advanced-tab-content.hidden {
+      display: none;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 min-h-screen transition-colors duration-300">
@@ -256,6 +280,46 @@
       </div>
     </div>
 
+    <!-- 高级分析区域 -->
+    <section id="advanced-analytics" class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-xl font-bold mb-6">📊 高级分析</h2>
+
+      <!-- Tab 导航 -->
+      <div class="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+        <button class="advanced-tab active" data-tab="team-health">团队健康度</button>
+        <button class="advanced-tab" data-tab="stability">代码稳定性</button>
+        <button class="advanced-tab" data-tab="work-pressure">工作压力</button>
+        <button class="advanced-tab" data-tab="contributor-churn">贡献者流失</button>
+        <button class="advanced-tab" data-tab="collaboration">协作热度</button>
+      </div>
+
+      <!-- Tab 内容容器 -->
+      <div id="team-health" class="advanced-tab-content">
+        <div id="bus-factor-gauge"></div>
+        <div id="critical-authors-list" class="mt-4"></div>
+      </div>
+
+      <div id="stability" class="advanced-tab-content hidden">
+        <div id="stability-chart"></div>
+        <div id="unstable-files-list" class="mt-4"></div>
+      </div>
+
+      <div id="work-pressure" class="advanced-tab-content hidden">
+        <div id="pressure-gauge"></div>
+        <div id="off-hours-breakdown" class="mt-4"></div>
+      </div>
+
+      <div id="contributor-churn" class="advanced-tab-content hidden">
+        <div id="churn-funnel"></div>
+        <div id="author-status-list" class="mt-4"></div>
+      </div>
+
+      <div id="collaboration" class="advanced-tab-content hidden">
+        <div id="coupling-network"></div>
+        <div id="file-pairs-list" class="mt-4"></div>
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="text-center text-sm text-slate-400 dark:text-slate-500 py-4">
       由 <span class="text-primary-500 font-medium">commitx</span> 生成于 <span id="generated-at"></span>
@@ -322,6 +386,13 @@
     renderSoloFilesTable();
     renderAuthorFileTypeTable();
     renderExtraStats();
+
+    // 渲染高级分析模块
+    renderTeamHealth();
+    renderStability();
+    renderWorkPressure();
+    renderContributorChurn();
+    renderCollaboration();
   }
 
   // ============================================================
@@ -1113,6 +1184,745 @@
     });
   });
 
+  // ============================================================
+  // 高级分析 - 团队健康度
+  // ============================================================
+  function renderTeamHealth() {
+    const teamHealth = DATA.stats.teamHealth;
+
+    // 检查数据是否存在
+    if (!teamHealth) {
+      document.getElementById('team-health').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">团队健康度分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { busFactor, criticalAuthors, knowledgeDistribution, riskLevel } = teamHealth;
+
+    // 1. 渲染 Bus Factor 仪表盘
+    renderBusFactorGauge(busFactor, riskLevel, knowledgeDistribution);
+
+    // 2. 渲染关键人员列表
+    renderCriticalAuthorsList(criticalAuthors);
+  }
+
+  // Bus Factor 仪表盘（半圆仪表）
+  function renderBusFactorGauge(busFactor, riskLevel, knowledgeDistribution) {
+    const container = d3.select('#bus-factor-gauge');
+    container.html(''); // 清空
+
+    // 风险等级颜色映射
+    const riskColors = {
+      low: '#10b981',    // 绿色
+      medium: '#f59e0b', // 橙色
+      high: '#ef4444'    // 红色
+    };
+    const color = riskColors[riskLevel] || '#94a3b8';
+
+    // SVG 尺寸
+    const width = 300;
+    const height = 200;
+    const radius = 100;
+
+    const svg = container.append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2}, ${height - 20})`);
+
+    // 背景半圆（灰色）
+    const bgArc = d3.arc()
+      .innerRadius(radius - 20)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(Math.PI / 2);
+
+    svg.append('path')
+      .attr('d', bgArc)
+      .attr('fill', '#e2e8f0')
+      .attr('class', 'dark:fill-slate-700');
+
+    // 前景半圆（根据风险等级）
+    // 角度：low=0-60度, medium=60-120度, high=120-180度
+    const angleMap = { low: Math.PI/6, medium: Math.PI/3, high: Math.PI/2 };
+    const targetAngle = angleMap[riskLevel] || 0;
+
+    const foregroundArc = d3.arc()
+      .innerRadius(radius - 20)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(-Math.PI / 2 + targetAngle);
+
+    svg.append('path')
+      .attr('d', foregroundArc)
+      .attr('fill', color);
+
+    // 中心文本 - Bus Factor 数值
+    svg.append('text')
+      .attr('y', -30)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-4xl font-bold')
+      .attr('fill', color)
+      .text(busFactor);
+
+    svg.append('text')
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-sm fill-slate-600 dark:fill-slate-400')
+      .text('Bus Factor');
+
+    // 风险等级标签
+    const riskLabels = { low: '低风险', medium: '中等风险', high: '高风险' };
+    svg.append('text')
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-xs')
+      .attr('fill', color)
+      .text(riskLabels[riskLevel] || '');
+
+    // 知识分布均匀度
+    svg.append('text')
+      .attr('y', 40)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-xs fill-slate-500 dark:fill-slate-400')
+      .text(`知识分布: ${(knowledgeDistribution * 100).toFixed(0)}%`);
+  }
+
+  // 关键人员列表
+  function renderCriticalAuthorsList(criticalAuthors) {
+    const container = document.getElementById('critical-authors-list');
+
+    if (!criticalAuthors || criticalAuthors.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">未检测到关键人员</p>';
+      return;
+    }
+
+    let html = '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">知识评分</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">独有文件</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">主导文件</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    criticalAuthors.forEach((author, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">${author.knowledgeScore.toFixed(1)}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.uniqueFiles.length}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.dominantFiles.length}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 代码稳定性
+  // ============================================================
+  function renderStability() {
+    const stability = DATA.stats.stability;
+
+    // 检查数据是否存在
+    if (!stability) {
+      document.getElementById('stability').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">代码稳定性分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { fileChurnRate, stabilityScore, revertRate, fixCommitRate } = stability;
+
+    // 1. 渲染稳定性指标卡片
+    renderStabilityCards(stabilityScore, revertRate, fixCommitRate, fileChurnRate);
+
+    // 2. 渲染文件流失率柱状图
+    renderChurnChart(fileChurnRate);
+  }
+
+  // 稳定性指标卡片
+  function renderStabilityCards(stabilityScore, revertRate, fixCommitRate, fileChurnRate) {
+    const unstableCount = fileChurnRate.filter(f => f.isUnstable).length;
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">';
+
+    // 稳定性评分
+    const scoreColor = stabilityScore >= 80 ? 'text-emerald-500' :
+                       stabilityScore >= 60 ? 'text-amber-500' : 'text-rose-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${scoreColor}">${stabilityScore.toFixed(0)}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">稳定性评分</div>';
+    html += '</div>';
+
+    // Revert 率
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-violet-500">${(revertRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Revert 率</div>';
+    html += '</div>';
+
+    // Fix 提交率
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-orange-500">${(fixCommitRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Fix 提交率</div>';
+    html += '</div>';
+
+    // 不稳定文件数
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-rose-500">${unstableCount}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">不稳定文件</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    document.getElementById('stability-chart').innerHTML = html;
+  }
+
+  // 文件流失率柱状图
+  function renderChurnChart(fileChurnRate) {
+    const container = document.getElementById('unstable-files-list');
+
+    if (!fileChurnRate || fileChurnRate.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无流失率数据</p>';
+      return;
+    }
+
+    // 取 TOP 20
+    const top20 = fileChurnRate.slice(0, 20);
+
+    let html = '<div class="mb-4"><h3 class="text-md font-semibold mb-3">文件流失率 TOP 20</h3></div>';
+    html += '<div class="space-y-2">';
+
+    top20.forEach(file => {
+      const percentage = (file.churnRate * 100).toFixed(1);
+      const isUnstable = file.isUnstable;
+      const barColor = isUnstable ? 'bg-rose-500' : 'bg-primary-500';
+      const textColor = isUnstable ? 'text-rose-600 dark:text-rose-400' : '';
+
+      // 文件路径截断（最多显示 50 字符）
+      const displayPath = file.path.length > 50 ? '...' + file.path.slice(-47) : file.path;
+
+      html += '<div class="group">';
+      html += `<div class="flex items-center justify-between text-sm mb-1">`;
+      html += `<span class="font-mono text-xs ${textColor}" title="${escapeHtml(file.path)}">${escapeHtml(displayPath)}</span>`;
+      html += `<span class="text-slate-500 dark:text-slate-400">${percentage}%</span>`;
+      html += '</div>';
+      html += '<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">';
+      html += `<div class="${barColor} h-2 rounded-full transition-all" style="width: ${Math.min(percentage, 100)}%"></div>`;
+      html += '</div>';
+      html += `<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">修改 ${file.modifyCount} 次 · +${file.added.toLocaleString()} -${file.deleted.toLocaleString()}</div>`;
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 工作压力
+  // ============================================================
+  function renderWorkPressure() {
+    const workPressure = DATA.stats.workPressure;
+
+    // 检查数据是否存在
+    if (!workPressure) {
+      document.getElementById('work-pressure').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">工作压力分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { pressureScore, lateNightCommits, earlyMorningCommits,
+            weekendCommits, holidayCommits, offHoursRate } = workPressure;
+
+    // 1. 渲染压力评分仪表盘
+    renderPressureGauge(pressureScore, offHoursRate);
+
+    // 2. 渲染非工作时间分布
+    renderOffHoursBreakdown(lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits);
+  }
+
+  // 压力评分仪表盘（半圆仪表）
+  function renderPressureGauge(pressureScore, offHoursRate) {
+    const container = d3.select('#pressure-gauge');
+    container.html(''); // 清空
+
+    // 压力等级颜色映射
+    const getColor = (score) => {
+      if (score < 30) return '#10b981';  // 绿色 - 低压力
+      if (score < 60) return '#f59e0b';  // 橙色 - 中等压力
+      return '#ef4444';                   // 红色 - 高压力
+    };
+    const color = getColor(pressureScore);
+
+    // SVG 尺寸
+    const width = 300;
+    const height = 200;
+    const radius = 100;
+
+    const svg = container.append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2}, ${height - 20})`);
+
+    // 背景半圆（灰色）
+    const bgArc = d3.arc()
+      .innerRadius(radius - 20)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(Math.PI / 2);
+
+    svg.append('path')
+      .attr('d', bgArc)
+      .attr('fill', '#e2e8f0')
+      .attr('class', 'dark:fill-slate-700');
+
+    // 前景半圆（根据压力评分）
+    const targetAngle = -Math.PI / 2 + (Math.PI * pressureScore / 100);
+
+    const foregroundArc = d3.arc()
+      .innerRadius(radius - 20)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(targetAngle);
+
+    svg.append('path')
+      .attr('d', foregroundArc)
+      .attr('fill', color);
+
+    // 中心文本 - 压力评分
+    svg.append('text')
+      .attr('y', -30)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-4xl font-bold')
+      .attr('fill', color)
+      .text(pressureScore.toFixed(0));
+
+    svg.append('text')
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-sm fill-slate-600 dark:fill-slate-400')
+      .text('压力评分');
+
+    // 压力等级标签
+    const levelLabels = { low: '低压力', medium: '中等压力', high: '高压力' };
+    const level = pressureScore < 30 ? 'low' : pressureScore < 60 ? 'medium' : 'high';
+    svg.append('text')
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-xs')
+      .attr('fill', color)
+      .text(levelLabels[level]);
+
+    // 非工作时间占比
+    svg.append('text')
+      .attr('y', 40)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-xs fill-slate-500 dark:fill-slate-400')
+      .text(`非工作时间: ${(offHoursRate * 100).toFixed(1)}%`);
+  }
+
+  // 非工作时间分布
+  function renderOffHoursBreakdown(lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits) {
+    const container = document.getElementById('off-hours-breakdown');
+
+    const total = DATA.stats.totalCommits || 1;
+    const normalCommits = total - lateNightCommits - earlyMorningCommits - weekendCommits - holidayCommits.reduce((sum, h) => sum + h.commits, 0);
+
+    const data = [
+      { label: '正常时间', count: normalCommits, color: '#10b981' },
+      { label: '深夜 (23:00-02:00)', count: lateNightCommits, color: '#8b5cf6' },
+      { label: '凌晨 (02:00-06:00)', count: earlyMorningCommits, color: '#ef4444' },
+      { label: '周末', count: weekendCommits, color: '#f59e0b' },
+      { label: '假期', count: holidayCommits.reduce((sum, h) => sum + h.commits, 0), color: '#ec4899' }
+    ].filter(d => d.count > 0);
+
+    // 使用卡片形式展示（简化实现，不使用 D3 饼图）
+    let html = '<div class="mb-6"><h3 class="text-md font-semibold mb-3">提交时间分布</h3></div>';
+    html += '<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">';
+
+    data.forEach(item => {
+      const percentage = ((item.count / total) * 100).toFixed(1);
+      html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+      html += `<div class="flex items-center gap-2 mb-2">`;
+      html += `<div class="w-3 h-3 rounded-full" style="background-color: ${item.color}"></div>`;
+      html += `<span class="text-sm text-slate-600 dark:text-slate-400">${item.label}</span>`;
+      html += '</div>';
+      html += `<div class="text-2xl font-bold" style="color: ${item.color}">${item.count}</div>`;
+      html += `<div class="text-xs text-slate-500 dark:text-slate-400">${percentage}%</div>`;
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    // 假期提交列表
+    if (holidayCommits && holidayCommits.length > 0) {
+      html += '<div class="mt-6"><h3 class="text-md font-semibold mb-3">假期提交记录</h3></div>';
+      html += '<div class="overflow-x-auto">';
+      html += '<table class="w-full text-sm">';
+      html += '<thead>';
+      html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">日期</th>';
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">假期名称</th>';
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交数</th>';
+      html += '</tr>';
+      html += '</thead>';
+      html += '<tbody>';
+
+      holidayCommits.forEach((holiday, index) => {
+        const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+        html += `<tr class="${bgClass}">`;
+        html += `<td class="py-3">${holiday.date}</td>`;
+        html += `<td class="py-3">${escapeHtml(holiday.holidayName)}</td>`;
+        html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded">${holiday.commits}</span></td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      html += '</table>';
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 贡献者流失
+  // ============================================================
+  function renderContributorChurn() {
+    const contributorChurn = DATA.stats.contributorChurn;
+
+    // 检查数据是否存在
+    if (!contributorChurn) {
+      document.getElementById('contributor-churn').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">贡献者流失分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { active, occasional, dormant, lost, newJoiners,
+            churnRate, retentionRate, growthRate } = contributorChurn;
+
+    // 1. 渲染关键指标卡片
+    renderChurnMetrics(churnRate, retentionRate, growthRate, newJoiners.length);
+
+    // 2. 渲染漏斗图
+    renderChurnFunnel(active.length, occasional.length, dormant.length, lost.length);
+
+    // 3. 渲染作者状态列表
+    renderAuthorStatusList(active, occasional, dormant, lost);
+  }
+
+  // 关键指标卡片
+  function renderChurnMetrics(churnRate, retentionRate, growthRate, newJoinersCount) {
+    const container = document.getElementById('churn-funnel');
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">';
+
+    // 流失率
+    const churnColor = churnRate > 0.3 ? 'text-rose-500' : churnRate > 0.15 ? 'text-amber-500' : 'text-emerald-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${churnColor}">${(churnRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">流失率</div>';
+    html += '</div>';
+
+    // 留存率
+    const retentionColor = retentionRate > 0.7 ? 'text-emerald-500' : retentionRate > 0.4 ? 'text-amber-500' : 'text-rose-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${retentionColor}">${(retentionRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">留存率</div>';
+    html += '</div>';
+
+    // 增长率
+    const growthColor = growthRate > 0.2 ? 'text-emerald-500' : growthRate > 0 ? 'text-amber-500' : 'text-slate-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${growthColor}">${(growthRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">增长率</div>';
+    html += '</div>';
+
+    // 新加入者数
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-primary-500">${newJoinersCount}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">新加入者</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 漏斗图（4级分类）
+  function renderChurnFunnel(activeCount, occasionalCount, dormantCount, lostCount) {
+    const container = document.getElementById('churn-funnel');
+    const currentHTML = container.innerHTML;
+
+    const total = activeCount + occasionalCount + dormantCount + lostCount;
+    if (total === 0) {
+      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无贡献者数据</p>';
+      return;
+    }
+
+    const levels = [
+      { label: '活跃 (Active)', count: activeCount, color: '#10b981', desc: '<30天内有提交' },
+      { label: '偶尔 (Occasional)', count: occasionalCount, color: '#f59e0b', desc: '30-90天' },
+      { label: '休眠 (Dormant)', count: dormantCount, color: '#fb923c', desc: '90-180天' },
+      { label: '流失 (Lost)', count: lostCount, color: '#ef4444', desc: '>180天' }
+    ];
+
+    let html = currentHTML;
+    html += '<div class="mt-6 mb-4"><h3 class="text-md font-semibold">贡献者活跃度分布</h3></div>';
+    html += '<div class="space-y-3">';
+
+    levels.forEach((level, index) => {
+      const percentage = ((level.count / total) * 100).toFixed(1);
+      const width = Math.max(20, 100 - index * 15); // 漏斗宽度递减
+
+      html += '<div class="flex items-center gap-4">';
+      html += '<div class="flex-1">';
+      html += `<div class="flex items-center justify-between text-sm mb-1">`;
+      html += `<div class="flex items-center gap-2">`;
+      html += `<div class="w-3 h-3 rounded-full" style="background-color: ${level.color}"></div>`;
+      html += `<span class="font-medium">${level.label}</span>`;
+      html += `<span class="text-slate-500 dark:text-slate-400 text-xs">${level.desc}</span>`;
+      html += '</div>';
+      html += `<span class="text-slate-600 dark:text-slate-400">${level.count} 人 (${percentage}%)</span>`;
+      html += '</div>';
+      html += `<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex items-center justify-center" style="width: ${width}%">`;
+      html += `<div class="h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style="width: 100%; background-color: ${level.color}">`;
+      html += `${level.count}`;
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 作者状态列表
+  function renderAuthorStatusList(active, occasional, dormant, lost) {
+    const container = document.getElementById('author-status-list');
+
+    const allAuthors = [
+      ...active.map(a => ({ ...a, status: '活跃', statusColor: 'emerald' })),
+      ...occasional.map(a => ({ ...a, status: '偶尔', statusColor: 'amber' })),
+      ...dormant.map(a => ({ ...a, status: '休眠', statusColor: 'orange' })),
+      ...lost.map(a => ({ ...a, status: '流失', statusColor: 'rose' }))
+    ];
+
+    if (allAuthors.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无作者数据</p>';
+      return;
+    }
+
+    // 按最后提交日期降序排序
+    allAuthors.sort((a, b) => b.lastCommitDate.getTime() - a.lastCommitDate.getTime());
+
+    let html = '<div class="mt-6"><h3 class="text-md font-semibold mb-3">作者活跃状态</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">状态</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">最后活跃</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">距今天数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">总提交数</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    allAuthors.forEach((author, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+      const lastCommitDate = new Date(author.lastCommitDate).toLocaleDateString('zh-CN');
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3"><span class="px-2 py-1 bg-${author.statusColor}-100 dark:bg-${author.statusColor}-900/30 text-${author.statusColor}-700 dark:text-${author.statusColor}-300 rounded text-xs">${author.status}</span></td>`;
+      html += `<td class="py-3 text-slate-600 dark:text-slate-400">${lastCommitDate}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.daysSinceLastCommit}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.totalCommits}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 协作热度
+  // ============================================================
+  function renderCollaboration() {
+    const collaboration = DATA.stats.advancedCollaboration;
+
+    // 检查数据是否存在
+    if (!collaboration) {
+      document.getElementById('collaboration').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">协作热度分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { tightCoupling, pairProgramming, couplingScore } = collaboration;
+
+    // 1. 渲染耦合评分卡片
+    renderCouplingScoreCard(couplingScore, tightCoupling);
+
+    // 2. 渲染文件耦合列表
+    renderFileCouplingList(tightCoupling);
+
+    // 3. 渲染结对编程检测
+    renderPairProgrammingList(pairProgramming);
+  }
+
+  // 耦合评分卡片
+  function renderCouplingScoreCard(couplingScore, tightCoupling) {
+    const container = document.getElementById('coupling-network');
+
+    const highCouplingCount = tightCoupling.filter(f => f.coupling > 0.7).length;
+
+    const scoreColor = couplingScore < 30 ? 'text-emerald-500' :
+                       couplingScore < 60 ? 'text-amber-500' : 'text-rose-500';
+
+    let html = '<div class="grid grid-cols-2 gap-4 mb-6">';
+
+    // 耦合评分
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${scoreColor}">${couplingScore.toFixed(0)}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">耦合评分</div>';
+    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">分数越低越好</div>';
+    html += '</div>';
+
+    // 高耦合文件对数量
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-rose-500">${highCouplingCount}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">高耦合文件对</div>';
+    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">耦合度 >70%</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 文件耦合列表（TOP 20）
+  function renderFileCouplingList(tightCoupling) {
+    const container = document.getElementById('coupling-network');
+    const currentHTML = container.innerHTML;
+
+    if (!tightCoupling || tightCoupling.length === 0) {
+      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无文件耦合数据</p>';
+      return;
+    }
+
+    // 取 TOP 20
+    const top20 = tightCoupling.slice(0, 20);
+
+    let html = currentHTML;
+    html += '<div class="mt-6"><h3 class="text-md font-semibold mb-3">文件耦合关系 TOP 20</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 1</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 2</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同提交次数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">耦合度</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    top20.forEach((pair, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+      const couplingPercentage = (pair.coupling * 100).toFixed(1);
+      const isHighCoupling = pair.coupling > 0.7;
+      const couplingColor = isHighCoupling ? 'text-rose-600 dark:text-rose-400' : '';
+
+      // 文件路径截断
+      const displayPath1 = pair.file1.length > 40 ? '...' + pair.file1.slice(-37) : pair.file1;
+      const displayPath2 = pair.file2.length > 40 ? '...' + pair.file2.slice(-37) : pair.file2;
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file1)}">${escapeHtml(displayPath1)}</td>`;
+      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file2)}">${escapeHtml(displayPath2)}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.coOccurrence}</td>`;
+      html += `<td class="py-3 text-right ${couplingColor}"><span class="px-2 py-1 ${isHighCoupling ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300' : ''} rounded">${couplingPercentage}%</span></td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 结对编程检测列表
+  function renderPairProgrammingList(pairProgramming) {
+    const container = document.getElementById('file-pairs-list');
+
+    if (!pairProgramming || pairProgramming.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">未检测到结对编程模式</p>';
+      return;
+    }
+
+    let html = '<div class="mb-4"><h3 class="text-md font-semibold">结对编程检测 (共同修改 ≥3 个文件)</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 1</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 2</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同文件数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">协作次数</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    pairProgramming.forEach((pair, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-medium">${escapeHtml(pair.author1)}</td>`;
+      html += `<td class="py-3 font-medium">${escapeHtml(pair.author2)}</td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">${pair.sharedFiles.length}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.collaborationCount}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
   // 启动渲染
   renderAll();
 
@@ -1121,6 +1931,26 @@
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(renderAll, 300);
+  });
+
+  // 高级分析 Tab 切换
+  document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.advanced-tab');
+    const contents = document.querySelectorAll('.advanced-tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const targetTab = this.dataset.tab;
+
+        // 移除所有 active 类
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.add('hidden'));
+
+        // 激活当前 Tab
+        this.classList.add('active');
+        document.getElementById(targetTab).classList.remove('hidden');
+      });
+    });
   });
   </script>
 </body>
