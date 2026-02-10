@@ -156,6 +156,13 @@ export interface CommitStats {
   trends: TrendData;
   collaboration: CollaborationMetrics;
   messageStats: CommitMessageStats;
+
+  // 高级统计（可选，向后兼容）
+  teamHealth?: TeamHealthMetrics;
+  stability?: StabilityMetrics;
+  workPressure?: WorkPressureMetrics;
+  contributorChurn?: ContributorChurnMetrics;
+  advancedCollaboration?: AdvancedCollaborationMetrics;
 }
 
 /** 仓库信息 */
@@ -212,4 +219,107 @@ export interface ReportData {
     to: string;
   } | null;
   repos: string[];
+}
+
+// ============================================================
+// 高级统计类型（新增）
+// ============================================================
+
+/** 团队健康度指标 */
+export interface TeamHealthMetrics {
+  busFactor: number;
+  criticalAuthors: CriticalAuthor[];
+  knowledgeDistribution: number;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+export interface CriticalAuthor {
+  name: string;
+  email: string;
+  uniqueFiles: string[];
+  dominantFiles: string[];
+  knowledgeScore: number;
+}
+
+/** 代码稳定性指标 */
+export interface StabilityMetrics {
+  fileChurnRate: FileChurn[];
+  directoryChurnRate: DirectoryChurn[];
+  revertRate: number;
+  fixCommitRate: number;
+  stabilityScore: number;
+}
+
+export interface FileChurn {
+  path: string;
+  added: number;
+  deleted: number;
+  churnRate: number;
+  modifyCount: number;
+  isUnstable: boolean;
+}
+
+export interface DirectoryChurn {
+  path: string;
+  churnRate: number;
+  totalChanges: number;
+  fileCount: number;
+}
+
+/** 工作压力指标 */
+export interface WorkPressureMetrics {
+  lateNightCommits: number;
+  earlyMorningCommits: number;
+  weekendCommits: number;
+  holidayCommits: HolidayCommit[];
+  pressureScore: number;
+  offHoursRate: number;
+}
+
+export interface HolidayCommit {
+  date: string;
+  holidayName: string;
+  commits: number;
+}
+
+/** 贡献者流失指标 */
+export interface ContributorChurnMetrics {
+  active: AuthorDetail[];
+  occasional: AuthorDetail[];
+  dormant: AuthorDetail[];
+  lost: AuthorDetail[];
+  newJoiners: AuthorDetail[];
+  churnRate: number;
+  retentionRate: number;
+  growthRate: number;
+}
+
+export interface AuthorDetail {
+  name: string;
+  email: string;
+  lastCommitDate: Date;
+  daysSinceLastCommit: number;
+  totalCommits: number;
+}
+
+/** 高级协作指标 */
+export interface AdvancedCollaborationMetrics {
+  tightCoupling: FilePair[];
+  frequentPairs: FilePair[];
+  pairProgramming: AuthorPair[];
+  couplingScore: number;
+}
+
+export interface FilePair {
+  file1: string;
+  file2: string;
+  coOccurrence: number;
+  coupling: number;
+}
+
+export interface AuthorPair {
+  author1: string;
+  author2: string;
+  sharedFiles: string[];
+  collaborationCount: number;
 }
