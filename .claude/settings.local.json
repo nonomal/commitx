@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git remote:*)",
       "mcp__augment-context-engine__codebase-retrieval",
-      "Bash(pnpm build)"
+      "Bash(pnpm build)",
+      "Bash(node:*)"
     ]
   }
 }
