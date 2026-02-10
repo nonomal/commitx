@@ -8,7 +8,14 @@ Git 提交统计工具，递归扫描目录中的 Git 仓库，生成可视化 H
 
 ## 预览
 
-查看 [示例报告](https://github.com/qqzhangyanhua/commitx#readme) 了解可视化效果。
+### 主界面
+![主界面](docs/image.png)
+
+### 数据统计
+![数据统计](docs/image%20copy.png)
+
+### 高级分析
+![高级分析](docs/image%20copy%202.png)
 
 ## 特性
 
