@@ -391,6 +391,8 @@
     renderTeamHealth();
     renderStability();
     renderWorkPressure();
+    renderContributorChurn();
+    renderCollaboration();
   }
 
   // ============================================================
@@ -1597,6 +1599,326 @@
       html += '</table>';
       html += '</div>';
     }
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 贡献者流失
+  // ============================================================
+  function renderContributorChurn() {
+    const contributorChurn = DATA.stats.contributorChurn;
+
+    // 检查数据是否存在
+    if (!contributorChurn) {
+      document.getElementById('contributor-churn').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">贡献者流失分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { active, occasional, dormant, lost, newJoiners,
+            churnRate, retentionRate, growthRate } = contributorChurn;
+
+    // 1. 渲染关键指标卡片
+    renderChurnMetrics(churnRate, retentionRate, growthRate, newJoiners.length);
+
+    // 2. 渲染漏斗图
+    renderChurnFunnel(active.length, occasional.length, dormant.length, lost.length);
+
+    // 3. 渲染作者状态列表
+    renderAuthorStatusList(active, occasional, dormant, lost);
+  }
+
+  // 关键指标卡片
+  function renderChurnMetrics(churnRate, retentionRate, growthRate, newJoinersCount) {
+    const container = document.getElementById('churn-funnel');
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">';
+
+    // 流失率
+    const churnColor = churnRate > 0.3 ? 'text-rose-500' : churnRate > 0.15 ? 'text-amber-500' : 'text-emerald-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${churnColor}">${(churnRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">流失率</div>';
+    html += '</div>';
+
+    // 留存率
+    const retentionColor = retentionRate > 0.7 ? 'text-emerald-500' : retentionRate > 0.4 ? 'text-amber-500' : 'text-rose-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${retentionColor}">${(retentionRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">留存率</div>';
+    html += '</div>';
+
+    // 增长率
+    const growthColor = growthRate > 0.2 ? 'text-emerald-500' : growthRate > 0 ? 'text-amber-500' : 'text-slate-500';
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${growthColor}">${(growthRate * 100).toFixed(1)}%</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">增长率</div>';
+    html += '</div>';
+
+    // 新加入者数
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-primary-500">${newJoinersCount}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">新加入者</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 漏斗图（4级分类）
+  function renderChurnFunnel(activeCount, occasionalCount, dormantCount, lostCount) {
+    const container = document.getElementById('churn-funnel');
+    const currentHTML = container.innerHTML;
+
+    const total = activeCount + occasionalCount + dormantCount + lostCount;
+    if (total === 0) {
+      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无贡献者数据</p>';
+      return;
+    }
+
+    const levels = [
+      { label: '活跃 (Active)', count: activeCount, color: '#10b981', desc: '<30天内有提交' },
+      { label: '偶尔 (Occasional)', count: occasionalCount, color: '#f59e0b', desc: '30-90天' },
+      { label: '休眠 (Dormant)', count: dormantCount, color: '#fb923c', desc: '90-180天' },
+      { label: '流失 (Lost)', count: lostCount, color: '#ef4444', desc: '>180天' }
+    ];
+
+    let html = currentHTML;
+    html += '<div class="mt-6 mb-4"><h3 class="text-md font-semibold">贡献者活跃度分布</h3></div>';
+    html += '<div class="space-y-3">';
+
+    levels.forEach((level, index) => {
+      const percentage = ((level.count / total) * 100).toFixed(1);
+      const width = Math.max(20, 100 - index * 15); // 漏斗宽度递减
+
+      html += '<div class="flex items-center gap-4">';
+      html += '<div class="flex-1">';
+      html += `<div class="flex items-center justify-between text-sm mb-1">`;
+      html += `<div class="flex items-center gap-2">`;
+      html += `<div class="w-3 h-3 rounded-full" style="background-color: ${level.color}"></div>`;
+      html += `<span class="font-medium">${level.label}</span>`;
+      html += `<span class="text-slate-500 dark:text-slate-400 text-xs">${level.desc}</span>`;
+      html += '</div>';
+      html += `<span class="text-slate-600 dark:text-slate-400">${level.count} 人 (${percentage}%)</span>`;
+      html += '</div>';
+      html += `<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex items-center justify-center" style="width: ${width}%">`;
+      html += `<div class="h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style="width: 100%; background-color: ${level.color}">`;
+      html += `${level.count}`;
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 作者状态列表
+  function renderAuthorStatusList(active, occasional, dormant, lost) {
+    const container = document.getElementById('author-status-list');
+
+    const allAuthors = [
+      ...active.map(a => ({ ...a, status: '活跃', statusColor: 'emerald' })),
+      ...occasional.map(a => ({ ...a, status: '偶尔', statusColor: 'amber' })),
+      ...dormant.map(a => ({ ...a, status: '休眠', statusColor: 'orange' })),
+      ...lost.map(a => ({ ...a, status: '流失', statusColor: 'rose' }))
+    ];
+
+    if (allAuthors.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无作者数据</p>';
+      return;
+    }
+
+    // 按最后提交日期降序排序
+    allAuthors.sort((a, b) => b.lastCommitDate.getTime() - a.lastCommitDate.getTime());
+
+    let html = '<div class="mt-6"><h3 class="text-md font-semibold mb-3">作者活跃状态</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">状态</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">最后活跃</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">距今天数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">总提交数</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    allAuthors.forEach((author, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+      const lastCommitDate = new Date(author.lastCommitDate).toLocaleDateString('zh-CN');
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3"><span class="px-2 py-1 bg-${author.statusColor}-100 dark:bg-${author.statusColor}-900/30 text-${author.statusColor}-700 dark:text-${author.statusColor}-300 rounded text-xs">${author.status}</span></td>`;
+      html += `<td class="py-3 text-slate-600 dark:text-slate-400">${lastCommitDate}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.daysSinceLastCommit}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.totalCommits}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 协作热度
+  // ============================================================
+  function renderCollaboration() {
+    const collaboration = DATA.stats.advancedCollaboration;
+
+    // 检查数据是否存在
+    if (!collaboration) {
+      document.getElementById('collaboration').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">协作热度分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { tightCoupling, pairProgramming, couplingScore } = collaboration;
+
+    // 1. 渲染耦合评分卡片
+    renderCouplingScoreCard(couplingScore, tightCoupling);
+
+    // 2. 渲染文件耦合列表
+    renderFileCouplingList(tightCoupling);
+
+    // 3. 渲染结对编程检测
+    renderPairProgrammingList(pairProgramming);
+  }
+
+  // 耦合评分卡片
+  function renderCouplingScoreCard(couplingScore, tightCoupling) {
+    const container = document.getElementById('coupling-network');
+
+    const highCouplingCount = tightCoupling.filter(f => f.coupling > 0.7).length;
+
+    const scoreColor = couplingScore < 30 ? 'text-emerald-500' :
+                       couplingScore < 60 ? 'text-amber-500' : 'text-rose-500';
+
+    let html = '<div class="grid grid-cols-2 gap-4 mb-6">';
+
+    // 耦合评分
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold ${scoreColor}">${couplingScore.toFixed(0)}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">耦合评分</div>';
+    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">分数越低越好</div>';
+    html += '</div>';
+
+    // 高耦合文件对数量
+    html += '<div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">';
+    html += `<div class="text-3xl font-bold text-rose-500">${highCouplingCount}</div>`;
+    html += '<div class="text-sm text-slate-500 dark:text-slate-400 mt-1">高耦合文件对</div>';
+    html += '<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">耦合度 >70%</div>';
+    html += '</div>';
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 文件耦合列表（TOP 20）
+  function renderFileCouplingList(tightCoupling) {
+    const container = document.getElementById('coupling-network');
+    const currentHTML = container.innerHTML;
+
+    if (!tightCoupling || tightCoupling.length === 0) {
+      container.innerHTML = currentHTML + '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无文件耦合数据</p>';
+      return;
+    }
+
+    // 取 TOP 20
+    const top20 = tightCoupling.slice(0, 20);
+
+    let html = currentHTML;
+    html += '<div class="mt-6"><h3 class="text-md font-semibold mb-3">文件耦合关系 TOP 20</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 1</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件 2</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同提交次数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">耦合度</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    top20.forEach((pair, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+      const couplingPercentage = (pair.coupling * 100).toFixed(1);
+      const isHighCoupling = pair.coupling > 0.7;
+      const couplingColor = isHighCoupling ? 'text-rose-600 dark:text-rose-400' : '';
+
+      // 文件路径截断
+      const displayPath1 = pair.file1.length > 40 ? '...' + pair.file1.slice(-37) : pair.file1;
+      const displayPath2 = pair.file2.length > 40 ? '...' + pair.file2.slice(-37) : pair.file2;
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file1)}">${escapeHtml(displayPath1)}</td>`;
+      html += `<td class="py-3 font-mono text-xs" title="${escapeHtml(pair.file2)}">${escapeHtml(displayPath2)}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.coOccurrence}</td>`;
+      html += `<td class="py-3 text-right ${couplingColor}"><span class="px-2 py-1 ${isHighCoupling ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300' : ''} rounded">${couplingPercentage}%</span></td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 结对编程检测列表
+  function renderPairProgrammingList(pairProgramming) {
+    const container = document.getElementById('file-pairs-list');
+
+    if (!pairProgramming || pairProgramming.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">未检测到结对编程模式</p>';
+      return;
+    }
+
+    let html = '<div class="mb-4"><h3 class="text-md font-semibold">结对编程检测 (共同修改 ≥3 个文件)</h3></div>';
+    html += '<div class="overflow-x-auto">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead>';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 1</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者 2</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">共同文件数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">协作次数</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    pairProgramming.forEach((pair, index) => {
+      const bgClass = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-700/50' : '';
+
+      html += `<tr class="${bgClass}">`;
+      html += `<td class="py-3 font-medium">${escapeHtml(pair.author1)}</td>`;
+      html += `<td class="py-3 font-medium">${escapeHtml(pair.author2)}</td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded">${pair.sharedFiles.length}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${pair.collaborationCount}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
 
     container.innerHTML = html;
   }
