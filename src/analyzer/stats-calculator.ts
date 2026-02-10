@@ -394,6 +394,21 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
   // Commit Message 平均长度
   merged.messageStats.avgMessageLength /= repoCount;
 
+  // ============================================================
+  // 高级统计字段不进行多仓库合并
+  // ============================================================
+  // 原因：高级统计（teamHealth, stability, workPressure, contributorChurn, advancedCollaboration）
+  // 需要原始 CommitRecord[] 数据才能准确计算。在 mergeStats 中仅有聚合后的统计数据，
+  // 强行合并会导致结果不准确（例如 busFactor、revertRate 等指标无法简单累加）。
+  //
+  // 当前行为：
+  // - 单仓库场景：直接返回（第184行），保留所有高级统计
+  // - 多仓库场景：merged 中高级字段保持 undefined
+  //
+  // 如需多仓库的高级统计分析，建议：
+  // 1. 使用时间范围过滤单个仓库
+  // 2. 或在 analyzer/index.ts 中基于合并后的原始 commits 重新计算
+
   return merged;
 }
 
