@@ -38,7 +38,7 @@ npx commit-report
 ## 使用
 
 ```bash
-# 默认：扫描当前目录，统计最近 3 个月
+# 默认：扫描当前目录
 commit-report
 
 # 指定时间预设
