@@ -18,6 +18,7 @@ import type {
   CollabFile,
 } from '../types/index.js';
 import { extname } from 'node:path';
+import { calculateAIMetrics } from './ai-stats-calculator.js';
 
 /**
  * 根据解析后的提交记录，计算所有统计维度
@@ -179,6 +180,8 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     };
   });
 
+  const aiStats = calculateAIMetrics(sorted);
+
   return {
     totalCommits: sorted.length,
     linesAdded: totalLinesAdded,
@@ -199,6 +202,10 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     collaboration: calculateCollaboration(sorted),
     messageStats: calculateMessageStats(sorted),
     authorFileTypeContributions: calculateAuthorFileTypeContributions(sorted),
+    aiMetrics: aiStats.aiMetrics,
+    authorAIStats: aiStats.authorAIStats,
+    directoryAIStats: aiStats.directoryAIStats,
+    aiTrends: aiStats.aiTrends,
   };
 }
 

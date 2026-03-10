@@ -183,6 +183,13 @@ export interface CommitStats {
   workPressure?: WorkPressureMetrics;
   contributorChurn?: ContributorChurnMetrics;
   advancedCollaboration?: AdvancedCollaborationMetrics;
+  techDebt?: TechDebtStats;
+
+  // AI 使用统计（可选）
+  aiMetrics?: AIMetrics;
+  authorAIStats?: AuthorAIStats[];
+  directoryAIStats?: DirectoryAIStats[];
+  aiTrends?: AITrendPoint[];
 }
 
 /** 仓库信息 */
@@ -342,4 +349,142 @@ export interface AuthorPair {
   author2: string;
   sharedFiles: string[];
   collaborationCount: number;
+}
+
+// ============================================================
+// AI 使用统计类型
+// ============================================================
+
+/** AI 统计指标 */
+export interface AIMetrics {
+  totalAILines: number;
+  totalLines: number;
+  aiPercentage: number;
+  suspiciousCommits: number;
+  highAICommits: AICommit[];
+}
+
+/** AI 提交记录 */
+export interface AICommit {
+  hash: string;
+  author: string;
+  date: Date;
+  aiScore: number;
+  linesAdded: number;
+  filesCount: number;
+  message: string;
+}
+
+/** 作者 AI 统计 */
+export interface AuthorAIStats {
+  author: string;
+  email: string;
+  aiLines: number;
+  totalLines: number;
+  aiPercentage: number;
+}
+
+/** 目录 AI 统计 */
+export interface DirectoryAIStats {
+  path: string;
+  commits: number;
+  aiLines: number;
+  totalLines: number;
+  aiPercentage: number;
+  lastModified: Date;
+  isHighRisk: boolean;
+}
+
+/** AI 趋势数据点 */
+export interface AITrendPoint {
+  week: string;
+  aiLines: number;
+  totalLines: number;
+  aiPercentage: number;
+}
+
+// ============================================================
+// 技术债分析类型
+// ============================================================
+
+/** 技术债统计结果 */
+export interface TechDebtStats {
+  radar: RadarDimension[];
+  highRiskFiles: RiskFile[];
+  aiDetection: AIDetectionResult;
+  duplication: DuplicationResult;
+  trends: TrendPoint[];
+  actionItems: ActionItem[];
+}
+
+/** 雷达图维度数据 */
+export interface RadarDimension {
+  dimension: string;
+  score: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  description: string;
+  affectedFiles: number;
+}
+
+/** 高风险文件信息 */
+export interface RiskFile {
+  path: string;
+  riskScore: number;
+  complexity: number;
+  churnRate: number;
+  testCoverage: number;
+  knowledgeRisk: number;
+  primaryAuthor: string;
+  lastModified: Date;
+}
+
+/** AI 代码检测结果 */
+export interface AIDetectionResult {
+  suspiciousFiles: SuspiciousFile[];
+  totalSuspicious: number;
+}
+
+/** 疑似问题文件 */
+export interface SuspiciousFile {
+  file?: string;
+  commit?: string;
+  reason: string;
+  score: number;
+  description?: string;
+}
+
+/** 代码重复检测结果 */
+export interface DuplicationResult {
+  clusters: DuplicationCluster[];
+  fileScores: DuplicationFileScore[];
+}
+
+/** 代码重复簇 */
+export interface DuplicationCluster {
+  files: string[];
+  similarity: number;
+  lines: number;
+}
+
+/** 文件重复度分数 */
+export interface DuplicationFileScore {
+  file: string;
+  score: number;
+}
+
+/** 技术债趋势数据点 */
+export interface TrendPoint {
+  date: string;
+  debt: number;
+}
+
+/** 治理建议项 */
+export interface ActionItem {
+  file: string;
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  impact: number;
+  effort: number;
+  priority: number;
+  suggestedAction: string;
+  owner: string;
 }

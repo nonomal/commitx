@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { parseGitLog } from './git-log-parser.js';
 import { calculateStats, mergeStats } from './stats-calculator.js';
 import { calculateAdvancedStats } from './advanced/index.js';
+import { calculateTechDebt } from './tech-debt/index.js';
 import type { AnalyzeOptions, CommitStats } from '../types/index.js';
 
 /**
@@ -29,13 +30,21 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
 
       const stats = calculateStats(commits);
 
-      // 新增：计算高级统计
+      // 计算高级统计
       const advancedStats = calculateAdvancedStats(commits);
+
+      // 计算技术债（仅单仓库场景）
+      let techDebt;
+      if (repos.length === 1) {
+        spinner.text = `分析技术债 - ${repo.name}`;
+        techDebt = await calculateTechDebt(commits, repo.path);
+      }
 
       // 合并核心统计和高级统计
       const fullStats: CommitStats = {
         ...stats,
         ...advancedStats,
+        ...(techDebt && { techDebt }),
       };
 
       allStats.push(fullStats);
