@@ -4,7 +4,7 @@ import { checkbox } from '@inquirer/prompts';
 import { scanRepositories } from '../scanner/index.js';
 import { analyzeRepos } from '../analyzer/index.js';
 import { generateReport } from '../reporter/index.js';
-import { parsePeriod, resolveTimeRange } from './time-utils.js';
+import { resolveTimeRange } from './time-utils.js';
 import type { CliOptions, RepoInfo } from '../types/index.js';
 
 const program = new Command();
@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('commit-report')
   .description('Git 提交统计工具，生成可视化 HTML 报告')
-  .version('1.0.0')
+  .version('1.0.1')
   .argument('[directory]', '要扫描的目录路径', process.cwd())
   .option('-p, --period <period>', '时间预设 (7d/1m/3m/6m/1y/all)', 'all')
   .option('-f, --from <date>', '起始日期 (YYYY-MM-DD)')

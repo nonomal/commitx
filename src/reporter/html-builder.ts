@@ -3,6 +3,25 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CommitStats, ReportOptions, ReportData } from '../types/index.js';
 
+type JsonReportData = Omit<ReportData, 'stats'> & {
+  stats: Record<string, unknown>;
+};
+
+const REPORT_SCRIPT_FILES = [
+  'report-scripts/01-core.html',
+  'report-scripts/02-commit-details.html',
+  'report-scripts/03-basic-charts.html',
+  'report-scripts/04-trend-charts.html',
+  'report-scripts/05-tables-team-stability.html',
+  'report-scripts/06-pressure-churn.html',
+  'report-scripts/07-collab-debt-ai.html',
+];
+
+const REPORT_SECTION_FILES = [
+  'report-sections/01-overview.html',
+  'report-sections/02-advanced.html',
+];
+
 /**
  * 组装完整的 HTML 报告
  */
@@ -10,9 +29,11 @@ export async function buildHtml(
   stats: CommitStats,
   options: ReportOptions
 ): Promise<string> {
-  const template = await loadTemplate();
+  const template = await loadTemplateFile('report.html');
+  const reportSections = await loadTemplateParts(REPORT_SECTION_FILES);
+  const reportScript = await loadReportScript();
 
-  const reportData: ReportData = {
+  const reportData: JsonReportData = {
     stats: serializeStats(stats),
     generatedAt: new Date().toLocaleString('zh-CN'),
     timeRange: options.timeRange
@@ -30,7 +51,10 @@ export async function buildHtml(
     .replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026');
 
-  return template.replace('__REPORT_DATA__', jsonData);
+  return template
+    .replace('__REPORT_DATA__', jsonData)
+    .replace('__REPORT_SECTIONS__', reportSections)
+    .replace('__REPORT_SCRIPT__', reportScript);
 }
 
 /**
@@ -38,7 +62,7 @@ export async function buildHtml(
  * Date 对象转为 ISO 字符串
  */
 function serializeStats(stats: CommitStats): Record<string, unknown> {
-  const serializeAuthorDetail = (author: { lastCommitDate: Date; [key: string]: unknown }) => ({
+  const serializeAuthorDetail = <T extends { lastCommitDate: Date }>(author: T) => ({
     ...author,
     lastCommitDate: author.lastCommitDate.toISOString(),
   });
@@ -68,19 +92,31 @@ function serializeStats(stats: CommitStats): Record<string, unknown> {
   };
 }
 
+async function loadReportScript(): Promise<string> {
+  return loadTemplateParts(REPORT_SCRIPT_FILES);
+}
+
+async function loadTemplateParts(fileNames: string[]): Promise<string> {
+  const parts = await Promise.all(
+    fileNames.map((fileName) => loadTemplateFile(fileName))
+  );
+
+  return parts.join('\n');
+}
+
 /**
  * 加载 HTML 模板
  */
-async function loadTemplate(): Promise<string> {
+async function loadTemplateFile(fileName: string): Promise<string> {
   // 支持两种路径：开发模式和打包后模式
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
-  // 打包后: dist/index.js -> ../templates/report.html
-  // 开发模式: src/reporter/html-builder.ts -> ../../templates/report.html
+  // 打包后: dist/index.js -> ../templates
+  // 开发模式: src/reporter/html-builder.ts -> ../../templates
   const possiblePaths = [
-    resolve(currentDir, '../templates/report.html'),
-    resolve(currentDir, '../../templates/report.html'),
-    resolve(currentDir, '../../../templates/report.html'),
+    resolve(currentDir, '../templates', fileName),
+    resolve(currentDir, '../../templates', fileName),
+    resolve(currentDir, '../../../templates', fileName),
   ];
 
   for (const templatePath of possiblePaths) {
@@ -91,5 +127,5 @@ async function loadTemplate(): Promise<string> {
     }
   }
 
-  throw new Error('无法找到 HTML 模板文件');
+  throw new Error(`无法找到 HTML 模板文件: ${fileName}`);
 }

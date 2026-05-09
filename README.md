@@ -67,7 +67,7 @@ commit-report --no-open
 
 | 参数 | 缩写 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--period` | `-p` | `3m` | 时间预设 (7d/1m/3m/6m/1y) |
+| `--period` | `-p` | `all` | 时间预设 (7d/1m/3m/6m/1y/all) |
 | `--from` | `-f` | - | 起始日期 (YYYY-MM-DD) |
 | `--to` | `-t` | - | 结束日期 (YYYY-MM-DD) |
 | `--author` | `-a` | - | 过滤作者 |

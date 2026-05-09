@@ -1,0 +1,484 @@
+  // ============================================================
+  // 高级分析 - 协作热度
+  // ============================================================
+  function renderCollaboration() {
+    const collaboration = DATA.stats.advancedCollaboration;
+
+    // 检查数据是否存在
+    if (!collaboration) {
+      document.getElementById('collaboration').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">协作热度分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { tightCoupling, pairProgramming, couplingScore } = collaboration;
+
+    // 1. 渲染耦合评分卡片
+    renderCollaborationMetrics(couplingScore, tightCoupling);
+
+    // 2. 渲染文件耦合列表
+    renderFileCouplingList(tightCoupling);
+
+    // 3. 渲染结对编程检测
+    renderPairProgrammingList(pairProgramming);
+  }
+
+  // 耦合评分卡片
+  function renderCollaborationMetrics(couplingScore, tightCoupling) {
+    const container = document.getElementById('collaboration-metrics');
+
+    const highCouplingCount = tightCoupling.filter(f => f.coupling > 0.7).length;
+
+    const scoreColor = couplingScore < 30 ? 'text-emerald-500' :
+                       couplingScore < 60 ? 'text-amber-500' : 'text-rose-500';
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, desc, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+        <div class="text-xs text-slate-400 mt-1">${desc}</div>
+      </div>
+    `;
+
+    // 耦合评分
+    html += createCard(
+      '耦合评分',
+      couplingScore.toFixed(0),
+      scoreColor,
+      '分数越低越好',
+      'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1'
+    );
+
+    // 高耦合文件对数量
+    html += createCard(
+      '高耦合文件对',
+      highCouplingCount,
+      'text-rose-500',
+      '耦合度 >70%',
+      'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'
+    );
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 文件耦合列表（TOP 20）
+  function renderFileCouplingList(tightCoupling) {
+    const container = document.getElementById('file-pairs-list');
+
+    if (!tightCoupling || tightCoupling.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无文件耦合数据</p>';
+      return;
+    }
+
+    // 取 TOP 20
+    const top20 = tightCoupling.slice(0, 20);
+
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">文件对</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">共同提交</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">耦合度</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
+
+    top20.forEach((pair) => {
+      const couplingPercentage = (pair.coupling * 100).toFixed(1);
+      const isHighCoupling = pair.coupling > 0.7;
+      const couplingColor = isHighCoupling ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-400';
+      const badgeBg = isHighCoupling ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-slate-100 dark:bg-slate-700';
+
+      // 文件路径截断
+      const displayPath1 = pair.file1.length > 30 ? '...' + pair.file1.slice(-27) : pair.file1;
+      const displayPath2 = pair.file2.length > 30 ? '...' + pair.file2.slice(-27) : pair.file2;
+
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-3 pl-2">
+         <div class="flex flex-col gap-1">
+            <span class="font-mono text-xs text-slate-600 dark:text-slate-300" title="${escapeHtml(pair.file1)}">${escapeHtml(displayPath1)}</span>
+            <span class="font-mono text-xs text-slate-400" title="${escapeHtml(pair.file2)}">↳ ${escapeHtml(displayPath2)}</span>
+         </div>
+      </td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 text-xs">${pair.coOccurrence}</td>`;
+      html += `<td class="py-3 text-right pr-2"><span class="px-2 py-0.5 ${badgeBg} ${couplingColor} rounded text-xs">${couplingPercentage}%</span></td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // 结对编程检测列表
+  function renderPairProgrammingList(pairProgramming) {
+    const container = document.getElementById('pair-programming-list');
+
+    if (!pairProgramming || pairProgramming.length === 0) {
+      container.innerHTML = '<div class="flex flex-col items-center justify-center h-40 text-slate-400"><p>未检测到明显的结对编程模式</p><p class="text-xs mt-1">需共同修改 ≥3 个文件</p></div>';
+      return;
+    }
+
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">协作成员</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">共同文件</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">协作次数</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
+
+    pairProgramming.forEach((pair) => {
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-3 pl-2">
+        <div class="flex items-center gap-2">
+           <span class="font-medium text-slate-700 dark:text-slate-200">${escapeHtml(pair.author1)}</span>
+           <span class="text-slate-400 text-xs">+</span>
+           <span class="font-medium text-slate-700 dark:text-slate-200">${escapeHtml(pair.author2)}</span>
+        </div>
+      </td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">${pair.sharedFiles.length}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 pr-2">${pair.collaborationCount}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 技术债分析
+  // ============================================================
+  function renderTechDebt() {
+    const debt = stats.techDebt;
+    if (!debt) return;
+
+    renderTechDebtRadar('#tech-debt-radar', debt.radar);
+    renderDuplicationHeatmap('#duplication-heatmap', debt.duplication);
+    renderRiskTrendChart('#risk-trend-chart', debt.trends);
+    renderRiskFilesTable(debt.highRiskFiles);
+  }
+
+  // ============================================================
+  // AI 使用分析
+  // ============================================================
+  function renderAIUsageAnalysis() {
+    if (!stats.aiMetrics) return;
+
+    // 显示 AI 使用分析 Tab
+    const aiTab = document.getElementById('ai-usage-tab');
+    if (aiTab) aiTab.style.display = 'flex';
+
+    renderHighAIDirs();
+    renderHighAICommits();
+  }
+
+  function renderHighAIDirs() {
+    const tbody = document.getElementById('high-ai-dirs-body');
+    if (!tbody || !stats.directoryAIStats) return;
+
+    // 筛选高风险目录（高活跃 + 高 AI）
+    const highRiskDirs = stats.directoryAIStats
+      .filter(dir => dir.isHighRisk)
+      .sort((a, b) => b.aiPercentage - a.aiPercentage)
+      .slice(0, 10);
+
+    if (highRiskDirs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-400">暂无高风险目录</td></tr>';
+      return;
+    }
+
+    let html = '';
+    highRiskDirs.forEach(dir => {
+      const riskLevel = dir.aiPercentage > 80 ? '极高' :
+                        dir.aiPercentage > 70 ? '高' : '中';
+      const riskColor = dir.aiPercentage > 80 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                        dir.aiPercentage > 70 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
+                        'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400';
+
+      html += '<tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600/30">';
+      html += `<td class="py-3 font-medium">${escapeHtml(dir.path)}</td>`;
+      html += `<td class="py-3 text-right">${formatNumber(dir.commits)}</td>`;
+      html += `<td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">${dir.aiPercentage.toFixed(1)}%</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${new Date(dir.lastModified).toLocaleDateString('zh-CN')}</td>`;
+      html += `<td class="py-3 text-center"><span class="px-2 py-1 rounded text-xs font-medium ${riskColor}">${riskLevel}</span></td>`;
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  function renderHighAICommits() {
+    const tbody = document.getElementById('high-ai-commits-body');
+    if (!tbody || !stats.aiMetrics || !stats.aiMetrics.highAICommits) return;
+
+    const commits = stats.aiMetrics.highAICommits;
+
+    if (commits.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">暂无高 AI 提交</td></tr>';
+      return;
+    }
+
+    let html = '';
+    commits.forEach(commit => {
+      const scoreColor = commit.aiScore > 80 ? 'text-red-500' :
+                         commit.aiScore > 70 ? 'text-orange-500' :
+                         'text-yellow-500';
+
+      html += '<tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600/30">';
+      html += `<td class="py-3 font-mono text-xs">${commit.hash.substring(0, 8)}</td>`;
+      html += `<td class="py-3">${escapeHtml(commit.author)}</td>`;
+      html += `<td class="py-3 text-right font-semibold ${scoreColor}">${commit.aiScore.toFixed(0)}</td>`;
+      html += `<td class="py-3 text-right text-emerald-600 dark:text-emerald-400">+${formatNumber(commit.linesAdded)}</td>`;
+      html += `<td class="py-3 text-right">${commit.filesCount}</td>`;
+      html += `<td class="py-3 text-slate-600 dark:text-slate-400">${new Date(commit.date).toLocaleDateString('zh-CN')}</td>`;
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  function renderTechDebtRadar(selector, data) {
+    if (!data || data.length === 0) return;
+
+    const container = d3.select(selector);
+    container.html('');
+    const width = 350, height = 350, margin = 50;
+    const radius = Math.min(width, height) / 2 - margin;
+    const dimensions = data.map(d => d.dimension);
+    const angleSlice = (Math.PI * 2) / dimensions.length;
+
+    const svg = container.append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .append('g')
+      .attr('transform', `translate(${width/2},${height/2})`);
+
+    const colorScale = d3.scaleLinear()
+      .domain([0, 50, 100])
+      .range(['#10b981', '#f59e0b', '#ef4444']);
+
+    for (let i = 0; i < 5; i++) {
+      svg.append('circle')
+        .attr('r', (radius / 5) * (i + 1))
+        .attr('fill', 'none')
+        .attr('stroke', isDark() ? '#334155' : '#e2e8f0')
+        .attr('stroke-dasharray', '4,4');
+    }
+
+    const axis = svg.selectAll('.axis').data(dimensions).enter().append('g');
+    axis.append('line')
+      .attr('x2', (d, i) => radius * Math.cos(angleSlice * i - Math.PI/2))
+      .attr('y2', (d, i) => radius * Math.sin(angleSlice * i - Math.PI/2))
+      .attr('stroke', isDark() ? '#475569' : '#cbd5e1');
+
+    axis.append('text')
+      .attr('class', 'text-[10px] fill-slate-500 dark:fill-slate-400')
+      .attr('text-anchor', 'middle')
+      .attr('x', (d, i) => (radius + 20) * Math.cos(angleSlice * i - Math.PI/2))
+      .attr('y', (d, i) => (radius + 20) * Math.sin(angleSlice * i - Math.PI/2))
+      .text(d => d);
+
+    const radarLine = d3.lineRadial()
+      .radius(d => (d.score / 100) * radius)
+      .angle((d, i) => i * angleSlice)
+      .curve(d3.curveLinearClosed);
+
+    const values = data.map(d => ({ axis: d.dimension, score: d.score }));
+    const avgScore = d3.mean(values, d => d.score);
+
+    svg.append('path')
+      .datum(values)
+      .attr('d', radarLine)
+      .attr('fill', colorScale(avgScore))
+      .attr('fill-opacity', 0.4)
+      .attr('stroke', colorScale(avgScore))
+      .attr('stroke-width', 2);
+  }
+
+  function renderDuplicationHeatmap(selector, data) {
+    if (!data || !data.fileScores || data.fileScores.length === 0) {
+      d3.select(selector).html('<div class="flex items-center justify-center h-full text-slate-400">暂无重复代码检测数据</div>');
+      return;
+    }
+
+    const container = d3.select(selector);
+    container.html('');
+    const margin = { top: 20, right: 20, bottom: 40, left: 80 };
+    const width = container.node().clientWidth - margin.left - margin.right;
+    const height = 240 - margin.top - margin.bottom;
+
+    const svg = container.append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const topFiles = data.fileScores.slice(0, 10);
+    const y = d3.scaleBand()
+      .range([0, height])
+      .domain(topFiles.map(d => d.file.split('/').pop()))
+      .padding(0.1);
+
+    const x = d3.scaleLinear()
+      .range([0, width])
+      .domain([0, d3.max(topFiles, d => d.score) || 100]);
+
+    const colorScale = d3.scaleSequential(isDark() ? d3.interpolateYlOrRd : d3.interpolateReds)
+      .domain([0, d3.max(topFiles, d => d.score) || 100]);
+
+    svg.selectAll('.bar')
+      .data(topFiles)
+      .enter()
+      .append('rect')
+      .attr('y', d => y(d.file.split('/').pop()))
+      .attr('height', y.bandwidth())
+      .attr('x', 0)
+      .attr('width', d => x(d.score))
+      .style('fill', d => colorScale(d.score))
+      .on('mouseover', (e, d) => showTooltip(e, `${d.file}: ${d.score} 行重复`))
+      .on('mouseout', hideTooltip);
+
+    svg.append('g')
+      .call(d3.axisLeft(y))
+      .attr('color', isDark() ? '#475569' : '#cbd5e1');
+  }
+
+  function renderRiskTrendChart(selector, data) {
+    if (!data || data.length === 0) {
+      d3.select(selector).html('<div class="flex items-center justify-center h-full text-slate-400">暂无趋势数据</div>');
+      return;
+    }
+
+    const container = d3.select(selector);
+    container.html('');
+    const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+    const width = container.node().clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = container.append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleTime()
+      .domain(d3.extent(data, d => new Date(d.date)))
+      .range([0, width]);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.debt) || 100])
+      .nice()
+      .range([height, 0]);
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).ticks(5))
+      .attr('color', isDark() ? '#475569' : '#cbd5e1');
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .attr('color', isDark() ? '#475569' : '#cbd5e1');
+
+    const line = d3.line()
+      .x(d => x(new Date(d.date)))
+      .y(d => y(d.debt))
+      .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#ef4444')
+      .attr('stroke-width', 2)
+      .attr('d', line);
+
+    const area = d3.area()
+      .x(d => x(new Date(d.date)))
+      .y0(height)
+      .y1(d => y(d.debt))
+      .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'rgba(239, 68, 68, 0.1)')
+      .attr('d', area);
+  }
+
+  function renderRiskFilesTable(files) {
+    const tbody = document.getElementById('risk-files-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    if (!files || files.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">未发现显著高风险文件</td></tr>';
+      return;
+    }
+
+    files.forEach(file => {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50';
+      tr.innerHTML = `
+        <td class="py-3 text-slate-700 dark:text-slate-300 font-mono text-xs truncate max-w-md" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</td>
+        <td class="py-3 text-right">
+          <span class="px-2 py-1 rounded text-xs font-bold ${file.riskScore > 80 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}">${file.riskScore.toFixed(0)}</span>
+        </td>
+        <td class="py-3 text-right text-slate-600 dark:text-slate-400">${file.complexity.toFixed(0)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  setupCommitDetailFilters();
+
+  // 启动渲染
+  renderAll();
+
+  // 窗口大小变化时重新渲染
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderAll, 300);
+  });
+
+  // 高级分析 Tab 切换
+  document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.advanced-tab');
+    const contents = document.querySelectorAll('.advanced-tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const targetTab = this.dataset.tab;
+
+        // 移除所有 active 类
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.add('hidden'));
+
+        // 激活当前 Tab
+        this.classList.add('active');
+        document.getElementById(targetTab).classList.remove('hidden');
+      });
+    });
+  });
+  </script>

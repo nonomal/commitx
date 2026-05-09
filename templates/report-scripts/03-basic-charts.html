@@ -1,0 +1,378 @@
+  // ============================================================
+  // 提交时间分布 (24h 柱状图)
+  // ============================================================
+  function renderHourlyChart() {
+    const container = document.getElementById('hourly-chart');
+    container.innerHTML = '';
+
+    const data = stats.hourlyDistribution.map((count, hour) => ({ hour, count }));
+    const margin = { top: 10, right: 10, bottom: 30, left: 40 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().domain(data.map(d => d.hour)).range([0, width]).padding(0.3);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.count) || 1]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickFormat(d => d + ':00').tickValues(data.filter((_, i) => i % 3 === 0).map(d => d.hour)))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    svg.selectAll('.bar')
+      .data(data)
+      .join('rect')
+      .attr('x', d => x(d.hour))
+      .attr('y', d => y(d.count))
+      .attr('width', x.bandwidth())
+      .attr('height', d => height - y(d.count))
+      .attr('fill', '#0ea5e9')
+      .attr('rx', 2)
+      .on('mouseover', (event, d) => {
+        const hourData = stats.hourlyByAuthor?.[d.hour];
+        let tooltip = `${d.hour}:00 - ${d.hour + 1}:00: ${d.count} 次提交`;
+        if (hourData && Object.keys(hourData.authors).length > 0) {
+          const authorList = Object.entries(hourData.authors)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => `${name}: ${count}`)
+            .join('\n');
+          tooltip += '\n' + authorList;
+        }
+        showTooltip(event, tooltip);
+      })
+      .on('mouseout', hideTooltip);
+  }
+
+  // ============================================================
+  // 文件类型占比 (甜甜圈图)
+  // ============================================================
+  function renderFileTypeChart() {
+    const container = document.getElementById('filetype-chart');
+    container.innerHTML = '';
+
+    const rawData = stats.fileTypes.slice(0, 8);
+    if (rawData.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = rawData.map(d => ({
+      name: d.extension,
+      value: d.added + d.deleted,
+    }));
+
+    const size = 220;
+    const radius = size / 2 - 10;
+
+    const colors = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+    // 外层容器：饼图 + 图例水平排列
+    const wrapper = d3.select(container)
+      .append('div')
+      .attr('class', 'flex items-center gap-6');
+
+    const svg = wrapper
+      .append('svg')
+      .attr('width', size)
+      .attr('height', size)
+      .append('g')
+      .attr('transform', `translate(${size/2},${size/2})`);
+
+    const pie = d3.pie().value(d => d.value).sort(null);
+    const arc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius);
+
+    svg.selectAll('path')
+      .data(pie(data))
+      .join('path')
+      .attr('d', arc)
+      .attr('fill', (_, i) => colors[i % colors.length])
+      .attr('stroke', isDark() ? '#1e293b' : '#fff')
+      .attr('stroke-width', 2)
+      .on('mouseover', (event, d) => {
+        const pct = ((d.data.value / d3.sum(data, x => x.value)) * 100).toFixed(1);
+        showTooltip(event, `${d.data.name}: ${formatNumber(d.data.value)} 行 (${pct}%)`);
+      })
+      .on('mouseout', hideTooltip);
+
+    // 图例：垂直排列在右侧
+    const legend = wrapper
+      .append('div')
+      .attr('class', 'flex flex-col gap-2');
+
+    data.forEach((d, i) => {
+      const item = legend.append('div').attr('class', 'flex items-center gap-2 text-xs');
+      item.append('div')
+        .style('width', '10px')
+        .style('height', '10px')
+        .style('border-radius', '2px')
+        .style('flex-shrink', '0')
+        .style('background', colors[i % colors.length]);
+      item.append('span')
+        .attr('class', 'text-slate-600 dark:text-slate-400')
+        .text(d.name);
+    });
+  }
+
+  // ============================================================
+  // 作者贡献排行 (横向柱状图)
+  // ============================================================
+  function renderAuthorChart() {
+    const container = document.getElementById('author-chart');
+    container.innerHTML = '';
+
+    if (!stats.authors || stats.authors.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    // 创建排序切换按钮（如果有 AI 数据）
+    if (stats.authorAIStats && stats.authorAIStats.length > 0) {
+      const header = container.parentElement.querySelector('h2');
+      if (header && !header.querySelector('.sort-toggle')) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'sort-toggle ml-3 px-3 py-1 text-xs rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors';
+        toggleBtn.textContent = '按 AI 使用排序';
+        toggleBtn.onclick = () => {
+          const isAISort = toggleBtn.textContent.includes('AI');
+          toggleBtn.textContent = isAISort ? '按提交数排序' : '按 AI 使用排序';
+          renderAuthorChartWithSort(!isAISort);
+        };
+        header.appendChild(toggleBtn);
+      }
+    }
+
+    renderAuthorChartWithSort(false);
+  }
+
+  function renderAuthorChartWithSort(sortByAI) {
+    const container = document.getElementById('author-chart');
+    const existingToggle = container.parentElement.querySelector('.sort-toggle');
+    container.innerHTML = '';
+
+    // 合并作者数据和 AI 数据
+    const authorAIMap = new Map();
+    if (stats.authorAIStats) {
+      stats.authorAIStats.forEach(ai => {
+        authorAIMap.set(ai.email.toLowerCase(), ai);
+      });
+    }
+
+    let data = stats.authors.map(author => {
+      const aiData = authorAIMap.get(author.email.toLowerCase());
+      return {
+        ...author,
+        aiLines: aiData ? aiData.aiLines : 0,
+        aiPercentage: aiData ? aiData.aiPercentage : 0,
+      };
+    });
+
+    // 排序
+    if (sortByAI) {
+      data = data.sort((a, b) => b.aiPercentage - a.aiPercentage);
+    } else {
+      data = data.sort((a, b) => b.commits - a.commits);
+    }
+
+    data = data.slice(0, 10);
+
+    // 使用表格布局而不是 D3 图表
+    const hasAI = stats.authorAIStats && stats.authorAIStats.length > 0;
+
+    let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
+    html += '<thead><tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">作者</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">新增行</th>';
+    if (hasAI) {
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">AI 行数</th>';
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">AI 占比</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    data.forEach((author, i) => {
+      const aiColor = author.aiPercentage > 70 ? 'text-orange-500' :
+                      author.aiPercentage > 50 ? 'text-yellow-500' :
+                      'text-slate-600 dark:text-slate-400';
+
+      html += '<tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/30">';
+      html += `<td class="py-3 font-medium">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3 text-right">${formatNumber(author.commits)}</td>`;
+      html += `<td class="py-3 text-right text-emerald-600 dark:text-emerald-400">+${formatNumber(author.linesAdded)}</td>`;
+
+      if (hasAI) {
+        html += `<td class="py-3 text-right ${aiColor}">${formatNumber(author.aiLines)}</td>`;
+        html += `<td class="py-3 text-right ${aiColor} font-semibold">${author.aiPercentage.toFixed(1)}%</td>`;
+      }
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 活跃目录 TOP 10 (横向柱状图)
+  // ============================================================
+  function renderDirectoryChart() {
+    const container = document.getElementById('directory-chart');
+    container.innerHTML = '';
+
+    if (!stats.directories || stats.directories.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    // 合并目录数据和 AI 数据
+    const dirAIMap = new Map();
+    if (stats.directoryAIStats) {
+      stats.directoryAIStats.forEach(ai => {
+        dirAIMap.set(ai.path, ai);
+      });
+    }
+
+    let data = stats.directories.slice(0, 10).map(dir => {
+      const aiData = dirAIMap.get(dir.path);
+      return {
+        ...dir,
+        aiPercentage: aiData ? aiData.aiPercentage : 0,
+        isHighRisk: aiData ? aiData.isHighRisk : false,
+      };
+    });
+
+    const hasAI = stats.directoryAIStats && stats.directoryAIStats.length > 0;
+
+    // 使用表格布局
+    let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
+    html += '<thead><tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">目录</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交数</th>';
+    html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">变更行数</th>';
+    if (hasAI) {
+      html += '<th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">AI 占比</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    data.forEach(dir => {
+      const riskBadge = dir.isHighRisk ? '<span class="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">⚠️ 高风险</span>' : '';
+
+      html += '<tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/30">';
+      html += `<td class="py-3 font-medium">${escapeHtml(dir.path)}${riskBadge}</td>`;
+      html += `<td class="py-3 text-right">${formatNumber(dir.commits)}</td>`;
+      html += `<td class="py-3 text-right text-violet-600 dark:text-violet-400">${formatNumber(dir.linesChanged)}</td>`;
+
+      if (hasAI) {
+        const aiColor = dir.aiPercentage > 70 ? 'text-red-500' :
+                        dir.aiPercentage > 50 ? 'text-orange-500' :
+                        dir.aiPercentage > 30 ? 'text-yellow-500' :
+                        'text-slate-600 dark:text-slate-400';
+
+        html += `<td class="py-3 text-right">`;
+        html += `<div class="flex items-center justify-end gap-2">`;
+        html += `<div class="w-20 bg-slate-200 dark:bg-slate-700 rounded-full h-2">`;
+        html += `<div class="bg-gradient-to-r from-purple-500 to-orange-500 h-2 rounded-full" style="width: ${Math.min(dir.aiPercentage, 100)}%"></div>`;
+        html += `</div>`;
+        html += `<span class="${aiColor} font-semibold">${dir.aiPercentage.toFixed(1)}%</span>`;
+        html += `</div>`;
+        html += `</td>`;
+      }
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 更多统计
+  // ============================================================
+  function renderExtraStats() {
+    if (stats.busiestDay && stats.busiestDay.date) {
+      document.getElementById('stat-busiest-day').textContent =
+        stats.busiestDay.date + ' (' + stats.busiestDay.count + ' 次提交)';
+    }
+    if (stats.firstCommitDate) {
+      document.getElementById('stat-first-commit').textContent =
+        new Date(stats.firstCommitDate).toLocaleDateString('zh-CN');
+    }
+    if (stats.lastCommitDate) {
+      document.getElementById('stat-last-commit').textContent =
+        new Date(stats.lastCommitDate).toLocaleDateString('zh-CN');
+    }
+  }
+
+  // ============================================================
+  // 周趋势图 (折线图)
+  // ============================================================
+  function renderWeeklyTrendChart() {
+    const container = document.getElementById('weekly-trend-chart');
+    container.innerHTML = '';
+
+    if (!stats.trends || !stats.trends.weeklyTrend || stats.trends.weeklyTrend.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    const data = stats.trends.weeklyTrend;
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scalePoint().domain(data.map(d => d.week)).range([0, width]).padding(0.5);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.commits) || 1]).nice().range([height, 0]);
+
+    const textColor = isDark() ? '#8b949e' : '#64748b';
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickValues(data.filter((_, i) => i % Math.ceil(data.length / 6) === 0).map(d => d.week)))
+      .selectAll('text').attr('fill', textColor).attr('font-size', '10px');
+
+    svg.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').attr('fill', textColor);
+
+    svg.selectAll('.domain, .tick line').attr('stroke', isDark() ? '#334155' : '#e2e8f0');
+
+    const line = d3.line().x(d => x(d.week)).y(d => y(d.commits)).curve(d3.curveMonotoneX);
+
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#0ea5e9')
+      .attr('stroke-width', 2)
+      .attr('d', line);
+
+    svg.selectAll('.dot')
+      .data(data)
+      .join('circle')
+      .attr('cx', d => x(d.week))
+      .attr('cy', d => y(d.commits))
+      .attr('r', 4)
+      .attr('fill', '#0ea5e9')
+      .on('mouseover', (event, d) => showTooltip(event, `${d.week}: ${d.commits} 次提交, +${formatNumber(d.linesAdded)} / -${formatNumber(d.linesDeleted)}`))
+      .on('mouseout', hideTooltip);
+  }

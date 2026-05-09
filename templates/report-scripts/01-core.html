@@ -1,0 +1,248 @@
+  <script>
+  // ============================================================
+  // 初始化
+  // ============================================================
+  const stats = DATA.stats;
+  const tooltip = document.getElementById('tooltip');
+  const isDark = () => document.documentElement.classList.contains('dark');
+  const DETAIL_PAGE_SIZE = 100;
+  let detailFiltersReady = false;
+  let detailCurrentPage = 1;
+  const detailExpandedCommits = new Set();
+
+  // 主题切换
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    // 重新绘制所有图表以更新颜色
+    renderAll();
+  });
+
+  // 检测系统主题
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+
+  function formatNumber(n) {
+    return n.toLocaleString('zh-CN');
+  }
+
+  function formatDateKeyLocal(date) {
+    const d = new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function formatDateTimeLocal(date) {
+    return new Date(date).toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function showTooltip(event, text) {
+    tooltip.style.opacity = 1;
+    tooltip.innerHTML = text;
+    tooltip.style.left = event.pageX + 12 + 'px';
+    tooltip.style.top = event.pageY - 28 + 'px';
+  }
+  function hideTooltip() { tooltip.style.opacity = 0; }
+
+  // ============================================================
+  // 渲染入口
+  // ============================================================
+  function renderAll() {
+    renderSummary();
+    renderQualityCards();
+    renderAICard();
+    renderHeatmap();
+    renderPersonalCommitDetails();
+    renderAITrendChart();
+    renderWeeklyTrendChart();
+    renderCumulativeChart();
+    renderHourlyChart();
+    renderWeekdayChart();
+    renderFileTypeChart();
+    renderCommitTypeChart();
+    renderAuthorChart();
+    renderDirectoryChart();
+    renderHotFilesTable();
+    renderSoloFilesTable();
+    renderAuthorFileTypeTable();
+    renderExtraStats();
+
+    // 渲染高级分析模块
+    renderTeamHealth();
+    renderStability();
+    renderWorkPressure();
+    renderContributorChurn();
+    renderCollaboration();
+    renderTechDebt();
+    renderAIUsageAnalysis();
+  }
+
+  // ============================================================
+  // 概要卡片
+  // ============================================================
+  function renderSummary() {
+    document.getElementById('card-commits').textContent = formatNumber(stats.totalCommits);
+    document.getElementById('card-added').textContent = '+' + formatNumber(stats.linesAdded);
+    document.getElementById('card-deleted').textContent = '-' + formatNumber(stats.linesDeleted);
+    document.getElementById('card-files').textContent = formatNumber(stats.filesChanged);
+    document.getElementById('meta-info').textContent = DATA.repos.join(', ');
+    document.getElementById('time-range').textContent = DATA.timeRange
+      ? DATA.timeRange.from + ' ~ ' + DATA.timeRange.to
+      : '所有提交';
+    document.getElementById('generated-at').textContent = DATA.generatedAt;
+  }
+
+  // ============================================================
+  // 质量卡片
+  // ============================================================
+  function renderQualityCards() {
+    if (!stats.quality) return;
+    document.getElementById('card-avg-files').textContent = stats.quality.avgFilesPerCommit.toFixed(1);
+    document.getElementById('card-avg-lines').textContent = stats.quality.avgLinesPerCommit.toFixed(0);
+    document.getElementById('card-churn').textContent = (stats.quality.churnRate * 100).toFixed(1) + '%';
+    document.getElementById('card-streak').textContent = stats.timePatterns ? stats.timePatterns.longestStreak : 0;
+  }
+
+  // ============================================================
+  // AI 使用统计卡片
+  // ============================================================
+  function renderAICard() {
+    if (!stats.aiMetrics) return;
+
+    const card = document.getElementById('ai-usage-card');
+    card.style.display = 'grid';
+
+    document.getElementById('card-ai-percentage').textContent = stats.aiMetrics.aiPercentage.toFixed(1) + '%';
+    document.getElementById('card-ai-lines').textContent = formatNumber(stats.aiMetrics.totalAILines);
+    document.getElementById('card-total-lines').textContent = formatNumber(stats.aiMetrics.totalLines);
+    document.getElementById('card-suspicious-commits').textContent = formatNumber(stats.aiMetrics.suspiciousCommits);
+  }
+
+  // ============================================================
+  // 提交热力图 (GitHub 风格)
+  // ============================================================
+  function renderHeatmap() {
+    const container = document.getElementById('heatmap');
+    container.innerHTML = '';
+
+    const heatmapData = stats.dailyHeatmap;
+    const cellSize = 13;
+    const cellGap = 3;
+    const totalSize = cellSize + cellGap;
+    const weekDayLabels = ['', '一', '', '三', '', '五', ''];
+
+    // 计算日期范围
+    const dates = Object.keys(heatmapData).sort();
+    if (dates.length === 0) {
+      container.innerHTML = '<p class="text-slate-400 text-sm">暂无数据</p>';
+      return;
+    }
+
+    // 从数据或 timeRange 推断日期范围
+    const startDate = DATA.timeRange ? new Date(DATA.timeRange.from) : new Date(dates[0]);
+    const endDate = DATA.timeRange ? new Date(DATA.timeRange.to) : new Date(dates[dates.length - 1]);
+
+    // 调整到该周的周一
+    const adjustedStart = new Date(startDate);
+    adjustedStart.setDate(adjustedStart.getDate() - ((adjustedStart.getDay() + 6) % 7));
+
+    // 生成所有日期
+    const allDays = [];
+    const current = new Date(adjustedStart);
+    while (current <= endDate) {
+      const key = current.toISOString().split('T')[0];
+      allDays.push({ date: key, count: heatmapData[key] || 0 });
+      current.setDate(current.getDate() + 1);
+    }
+
+    const weeks = Math.ceil(allDays.length / 7);
+    const width = weeks * totalSize + 40;
+    const height = 7 * totalSize + 30;
+
+    const maxCount = Math.max(...allDays.map(d => d.count), 1);
+
+    const lightColors = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+    const darkColors = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'];
+    const colors = isDark() ? darkColors : lightColors;
+
+    const colorScale = (count) => {
+      if (count === 0) return colors[0];
+      const ratio = count / maxCount;
+      if (ratio <= 0.25) return colors[1];
+      if (ratio <= 0.5) return colors[2];
+      if (ratio <= 0.75) return colors[3];
+      return colors[4];
+    };
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    // 星期标签
+    weekDayLabels.forEach((label, i) => {
+      svg.append('text')
+        .attr('x', 20)
+        .attr('y', 28 + i * totalSize)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', isDark() ? '#8b949e' : '#959da5')
+        .text(label);
+    });
+
+    // 月份标签
+    const monthPositions = {};
+    allDays.forEach((d, i) => {
+      const date = new Date(d.date);
+      if (date.getDate() <= 7) {
+        const weekIdx = Math.floor(i / 7);
+        const monthName = date.toLocaleDateString('zh-CN', { month: 'short' });
+        if (!monthPositions[monthName]) {
+          monthPositions[monthName] = 36 + weekIdx * totalSize;
+        }
+      }
+    });
+
+    Object.entries(monthPositions).forEach(([month, x]) => {
+      svg.append('text')
+        .attr('x', x)
+        .attr('y', 10)
+        .attr('font-size', '10px')
+        .attr('fill', isDark() ? '#8b949e' : '#959da5')
+        .text(month);
+    });
+
+    // 热力图格子
+    allDays.forEach((d, i) => {
+      const weekIdx = Math.floor(i / 7);
+      const dayIdx = i % 7;
+
+      svg.append('rect')
+        .attr('class', 'heatmap-cell')
+        .attr('x', 36 + weekIdx * totalSize)
+        .attr('y', 18 + dayIdx * totalSize)
+        .attr('width', cellSize)
+        .attr('height', cellSize)
+        .attr('fill', colorScale(d.count))
+        .on('mouseover', (event) => showTooltip(event, `${d.date}: ${d.count} 次提交`))
+        .on('mouseout', hideTooltip);
+    });
+  }

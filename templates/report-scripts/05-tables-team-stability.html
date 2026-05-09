@@ -1,0 +1,378 @@
+  // ============================================================
+  // 热点文件表格
+  // ============================================================
+  function renderHotFilesTable() {
+    const tbody = document.getElementById('hot-files-body');
+    tbody.innerHTML = '';
+
+    if (!stats.quality || !stats.quality.hotFiles || stats.quality.hotFiles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">暂无数据</td></tr>';
+      return;
+    }
+
+    for (const file of stats.quality.hotFiles) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs" title="${file.path}">${file.path}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.modifyCount}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.authors.length}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // 知识集中度风险表格
+  // ============================================================
+  function renderSoloFilesTable() {
+    const tbody = document.getElementById('solo-files-body');
+    tbody.innerHTML = '';
+
+    if (!stats.collaboration || !stats.collaboration.soloFiles || stats.collaboration.soloFiles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">暂无单人维护文件</td></tr>';
+      return;
+    }
+
+    for (const file of stats.collaboration.soloFiles) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-xs" title="${file.path}">${file.path}</td>
+        <td class="py-2 text-slate-600 dark:text-slate-400">${file.author}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${file.commits}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // 作者×文件类型贡献表格（支持排序）
+  // ============================================================
+  let aftSortKey = 'linesAdded';
+  let aftSortAsc = false;
+
+  function renderAuthorFileTypeTable() {
+    const tbody = document.getElementById('author-filetype-body');
+    tbody.innerHTML = '';
+
+    if (!stats.authorFileTypeContributions || stats.authorFileTypeContributions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-400">暂无数据</td></tr>';
+      return;
+    }
+
+    // 排序数据
+    const sortedData = [...stats.authorFileTypeContributions].sort((a, b) => {
+      let valA = a[aftSortKey];
+      let valB = b[aftSortKey];
+      // 字符串比较
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+        return aftSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      // 数字比较
+      return aftSortAsc ? valA - valB : valB - valA;
+    });
+
+    for (const item of sortedData) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 dark:border-slate-700/50';
+      tr.innerHTML = `
+        <td class="py-2 text-slate-700 dark:text-slate-300 truncate max-w-[120px]" title="${escapeHtml(item.author)}">${escapeHtml(item.author)}</td>
+        <td class="py-2 text-slate-600 dark:text-slate-400">${escapeHtml(item.extension)}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${formatNumber(item.fileCount)}</td>
+        <td class="py-2 text-right text-emerald-600 dark:text-emerald-400">+${formatNumber(item.linesAdded)}</td>
+        <td class="py-2 text-right text-rose-600 dark:text-rose-400">-${formatNumber(item.linesDeleted)}</td>
+        <td class="py-2 text-right text-slate-600 dark:text-slate-400">${item.commits}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // 更新排序图标
+    document.querySelectorAll('#author-filetype-table th[data-sort]').forEach(th => {
+      const icon = th.querySelector('.sort-icon');
+      if (th.dataset.sort === aftSortKey) {
+        icon.textContent = aftSortAsc ? '↑' : '↓';
+      } else {
+        icon.textContent = '';
+      }
+    });
+  }
+
+  // 绑定表头点击排序
+  document.querySelectorAll('#author-filetype-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (aftSortKey === key) {
+        aftSortAsc = !aftSortAsc;
+      } else {
+        aftSortKey = key;
+        aftSortAsc = key === 'author' || key === 'extension'; // 字符串默认升序
+      }
+      renderAuthorFileTypeTable();
+    });
+  });
+
+  // ============================================================
+  // 高级分析 - 团队健康度
+  // ============================================================
+  function renderTeamHealth() {
+    const teamHealth = DATA.stats.teamHealth;
+
+    // 检查数据是否存在
+    if (!teamHealth) {
+      document.getElementById('team-health').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">团队健康度分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { busFactor, criticalAuthors, knowledgeDistribution, riskLevel } = teamHealth;
+
+    // 1. 渲染 Bus Factor 仪表盘
+    renderBusFactorGauge(busFactor, riskLevel, knowledgeDistribution);
+
+    // 2. 渲染关键人员列表
+    renderCriticalAuthorsList(criticalAuthors);
+  }
+
+  // Bus Factor 仪表盘（半圆仪表）
+  function renderBusFactorGauge(busFactor, riskLevel, knowledgeDistribution) {
+    const container = d3.select('#bus-factor-gauge');
+    container.html(''); // 清空
+
+    // 风险等级颜色映射
+    const riskColors = {
+      low: '#10b981',    // 绿色
+      medium: '#f59e0b', // 橙色
+      high: '#ef4444'    // 红色
+    };
+    const color = riskColors[riskLevel] || '#94a3b8';
+
+    // SVG 尺寸
+    const width = 240; // 略微缩小以适应新布局
+    const height = 140;
+    const radius = 90;
+
+    const svg = container.append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2}, ${height - 10})`);
+
+    // 背景半圆（灰色）
+    const bgArc = d3.arc()
+      .innerRadius(radius - 15)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(Math.PI / 2);
+
+    svg.append('path')
+      .attr('d', bgArc)
+      .attr('fill', '#e2e8f0')
+      .attr('class', 'dark:fill-slate-600');
+
+    // 前景半圆（根据风险等级）
+    // 角度：low=0-60度, medium=60-120度, high=120-180度
+    const angleMap = { low: Math.PI/6, medium: Math.PI/3, high: Math.PI/2 };
+    const targetAngle = angleMap[riskLevel] || 0;
+
+    const foregroundArc = d3.arc()
+      .innerRadius(radius - 15)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(-Math.PI / 2 + targetAngle);
+
+    svg.append('path')
+      .attr('d', foregroundArc)
+      .attr('fill', color);
+
+    // 中心文本 - Bus Factor 数值
+    svg.append('text')
+      .attr('y', -25)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-5xl font-bold')
+      .attr('fill', color)
+      .text(busFactor);
+
+    // 风险等级标签
+    const riskLabels = { low: '低风险', medium: '中等风险', high: '高风险' };
+    svg.append('text')
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-sm font-medium fill-slate-500 dark:fill-slate-400')
+      .text(riskLabels[riskLevel] || '');
+
+    // 知识分布均匀度
+    d3.select('#bus-factor-gauge')
+      .append('div')
+      .attr('class', 'text-center mt-2 text-xs text-slate-400')
+      .text(`知识分布均匀度: ${(knowledgeDistribution * 100).toFixed(0)}%`);
+  }
+
+  // 关键人员列表
+  function renderCriticalAuthorsList(criticalAuthors) {
+    const container = document.getElementById('critical-authors-list');
+
+    if (!criticalAuthors || criticalAuthors.length === 0) {
+      container.innerHTML = '<div class="flex flex-col items-center justify-center h-40 text-slate-400"><p>未检测到关键人员</p><p class="text-xs mt-1">这意味着知识分布比较均匀</p></div>';
+      return;
+    }
+
+    let html = '<div class="overflow-x-auto max-h-[300px] overflow-y-auto scrollbar-thin">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-700">';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium pl-2">姓名</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right">知识评分</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right">独有文件</th>';
+    html += '<th class="pb-2 text-slate-500 dark:text-slate-400 font-medium text-right pr-2">主导文件</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
+
+    criticalAuthors.forEach((author) => {
+      html += '<tr class="hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">';
+      html += `<td class="py-3 font-medium pl-2 text-slate-700 dark:text-slate-300">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-3 text-right"><span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-medium">${author.knowledgeScore.toFixed(1)}</span></td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400">${author.uniqueFiles.length}</td>`;
+      html += `<td class="py-3 text-right text-slate-600 dark:text-slate-400 pr-2">${author.dominantFiles.length}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 代码稳定性
+  // ============================================================
+  function renderStability() {
+    const stability = DATA.stats.stability;
+
+    // 检查数据是否存在
+    if (!stability) {
+      document.getElementById('stability').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">代码稳定性分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { fileChurnRate, stabilityScore, revertRate, fixCommitRate } = stability;
+
+    // 1. 渲染稳定性指标卡片
+    renderStabilityCards(stabilityScore, revertRate, fixCommitRate, fileChurnRate);
+
+    // 2. 渲染文件流失率柱状图
+    renderChurnChart(fileChurnRate);
+  }
+
+  // 稳定性指标卡片
+  function renderStabilityCards(stabilityScore, revertRate, fixCommitRate, fileChurnRate) {
+    const unstableCount = fileChurnRate.filter(f => f.isUnstable).length;
+    const container = document.getElementById('stability-metrics');
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+      </div>
+    `;
+
+    // 稳定性评分
+    const scoreColor = stabilityScore >= 80 ? 'text-emerald-500' :
+                       stabilityScore >= 60 ? 'text-amber-500' : 'text-rose-500';
+    html += createCard(
+      '稳定性评分',
+      stabilityScore.toFixed(0),
+      scoreColor,
+      'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+    );
+
+    // Revert 率
+    html += createCard(
+      'Revert 率',
+      (revertRate * 100).toFixed(1) + '%',
+      'text-violet-500',
+      'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6'
+    );
+
+    // Fix 提交率
+    html += createCard(
+      'Fix 提交率',
+      (fixCommitRate * 100).toFixed(1) + '%',
+      'text-orange-500',
+      'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+    );
+
+    // 不稳定文件数
+    html += createCard(
+      '不稳定文件',
+      unstableCount,
+      'text-rose-500',
+      'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+    );
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // 文件流失率柱状图
+  function renderChurnChart(fileChurnRate) {
+    const container = document.getElementById('unstable-files-list');
+
+    if (!fileChurnRate || fileChurnRate.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无流失率数据</p>';
+      return;
+    }
+
+    // 取 TOP 20
+    const top20 = fileChurnRate.slice(0, 20);
+
+    let html = '<div class="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin pr-2">';
+
+    top20.forEach(file => {
+      const percentage = (file.churnRate * 100).toFixed(1);
+      const isUnstable = file.isUnstable;
+      const barColor = isUnstable ? 'bg-rose-500' : 'bg-primary-500';
+      const textColor = isUnstable ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-700 dark:text-slate-300';
+
+      // 文件路径截断
+      const displayPath = file.path.length > 60 ? '...' + file.path.slice(-57) : file.path;
+
+      html += '<div class="group hover:bg-slate-100 dark:hover:bg-slate-800/50 p-2 rounded-lg transition-colors">';
+      html += `<div class="flex items-center justify-between text-sm mb-1.5">`;
+      html += `<span class="font-mono text-xs ${textColor}" title="${escapeHtml(file.path)}">${escapeHtml(displayPath)}</span>`;
+      html += `<span class="text-xs font-medium ${isUnstable ? 'text-rose-500' : 'text-slate-500'}">${percentage}%</span>`;
+      html += '</div>';
+      html += '<div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">';
+      html += `<div class="${barColor} h-1.5 rounded-full transition-all" style="width: ${Math.min(percentage, 100)}%"></div>`;
+      html += '</div>';
+      html += `<div class="text-[10px] text-slate-400 mt-1 flex gap-2">`;
+      html += `<span>修改 ${file.modifyCount} 次</span>`;
+      html += `<span><span class="text-emerald-500">+${formatNumber(file.added)}</span> / <span class="text-rose-500">-${formatNumber(file.deleted)}</span></span>`;
+      html += `</div>`;
+      html += '</div>';
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  }

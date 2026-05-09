@@ -1,7 +1,8 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import ig from 'ignore';
+import type { Ignore } from 'ignore';
 import type { CommitRecord, FileChange, TimeRange } from '../types/index.js';
 
 /** git log 的格式化分隔符 */
@@ -21,24 +22,23 @@ export async function parseGitLog(
   const ignoreFilter = await loadGitignore(repoPath);
 
   const args = [
-    'git',
     'log',
-    `--format="${FORMAT}"`,
+    `--format=${FORMAT}`,
     '--numstat',
   ];
 
   if (timeRange) {
-    args.push(`--since="${timeRange.from.toISOString()}"`);
-    args.push(`--until="${timeRange.to.toISOString()}"`);
+    args.push(`--since=${timeRange.from.toISOString()}`);
+    args.push(`--until=${timeRange.to.toISOString()}`);
   }
 
   if (author) {
-    args.push(`--author="${author}"`);
+    args.push(`--author=${author}`);
   }
 
   let output: string;
   try {
-    output = execSync(args.join(' '), {
+    output = execFileSync('git', args, {
       cwd: repoPath,
       encoding: 'utf-8',
       maxBuffer: 100 * 1024 * 1024, // 100MB buffer for large repos
@@ -114,7 +114,7 @@ function parseOutput(
 /**
  * 读取仓库的 .gitignore 规则
  */
-async function loadGitignore(repoPath: string): ReturnType<typeof ig> {
+async function loadGitignore(repoPath: string): Promise<Ignore> {
   const ignoreInstance = ig();
 
   try {

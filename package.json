@@ -12,8 +12,9 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test:build": "tsup src/analyzer/stats-calculator.ts --format esm --target node18 --outDir .test-dist/analyzer --splitting false --sourcemap false --no-dts",
-    "test": "pnpm test:build && node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:build": "tsup src/analyzer/stats-calculator.ts src/analyzer/git-log-parser.ts --format esm --target node18 --outDir .test-dist/analyzer --splitting false --sourcemap false --no-dts",
+    "test": "pnpm typecheck && pnpm test:build && node --test tests/*.test.mjs",
     "dev": "tsup --watch",
     "start": "node dist/cli/index.js"
   },
@@ -43,8 +44,7 @@
     "commander": "^14.0.3",
     "ignore": "^7.0.5",
     "open": "^11.0.0",
-    "ora": "^9.3.0",
-    "simple-git": "^3.30.0"
+    "ora": "^9.3.0"
   },
   "devDependencies": {
     "@types/node": "^25.2.2",

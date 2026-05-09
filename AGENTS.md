@@ -100,13 +100,12 @@ node dist/index.js ~/projects --period 3m --open
 - **模块系统**: ESM
 - **目标环境**: Node.js 18+
 - **代码风格**: 精简高效，避免冗余注释
-- **文件长度**: 单文件不超过 500 行（当前 stats-calculator.ts 为 942 行，需拆分）
+- **文件长度**: 单文件不超过 500 行；统计与报告模板已按职责拆分
 - **类型定义**: 集中在 `src/types/index.ts`，不与业务代码混合
 - **包管理**: 使用 pnpm
 
 **关键依赖**:
 - `commander`: CLI 框架
-- `simple-git`: Git 操作（未直接使用，可考虑移除）
 - `chalk`, `ora`: 终端美化
 - `@inquirer/prompts`: 交互式提示
 - `ignore`: .gitignore 规则解析
@@ -121,11 +120,11 @@ node dist/index.js ~/projects --period 3m --open
 
 **常见任务**:
 - 新增统计维度：修改 `CommitStats` 类型 + `calculateStats()` 函数
-- 调整 HTML 报告：修改 `templates/report.html`
+- 调整 HTML 报告：修改 `templates/report.html`、`templates/report-sections/` 或 `templates/report-scripts/`
 - 优化扫描性能：调整 `scanner/index.ts` 的 `IGNORE_DIRS`
 - 支持新的时间格式：扩展 `cli/time-utils.ts`
 
 **注意事项**:
-- `stats-calculator.ts` 超过 500 行，需要拆分
+- 统计计算已拆分为 `stats-calculator.ts`、`stats-metrics.ts`、`stats-empty.ts`、`stats-utils.ts`
 - 高级统计模块（`analyzer/advanced/`）仅在单仓库场景下有效
 - 多仓库合并时，高级统计字段为 `undefined`（见 `stats-calculator.ts` 第 447-461 行注释）

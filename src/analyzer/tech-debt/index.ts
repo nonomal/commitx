@@ -1,4 +1,12 @@
-import type { CommitRecord, TechDebtStats } from '../../types/index.js';
+import type {
+  AIDetectionResult,
+  CommitRecord,
+  DuplicationResult,
+  RadarDimension,
+  RiskFile,
+  TechDebtStats,
+  TrendPoint,
+} from '../../types/index.js';
 import { calculateRiskScores } from './risk-scorer.js';
 import { detectAICode } from './ai-detector.js';
 import { detectDuplication } from './duplication.js';
@@ -30,13 +38,17 @@ export async function calculateTechDebt(
   };
 }
 
-function calculateRadarDimensions(riskFiles: any[], aiDetection: any, duplication: any) {
+function calculateRadarDimensions(
+  riskFiles: RiskFile[],
+  aiDetection: AIDetectionResult,
+  duplication: DuplicationResult
+): RadarDimension[] {
   const avgComplexity = riskFiles.length > 0
     ? riskFiles.reduce((sum, f) => sum + f.complexity, 0) / riskFiles.length
     : 0;
 
   const avgDuplication = duplication.fileScores.length > 0
-    ? duplication.fileScores.reduce((sum: number, f: any) => sum + f.score, 0) / duplication.fileScores.length
+    ? duplication.fileScores.reduce((sum, file) => sum + file.score, 0) / duplication.fileScores.length
     : 0;
 
   const avgTestCoverage = riskFiles.length > 0
@@ -64,7 +76,7 @@ function calculateRadarDimensions(riskFiles: any[], aiDetection: any, duplicatio
       score: Math.min(avgDuplication / 10, 100),
       riskLevel: avgDuplication > 700 ? 'high' : avgDuplication > 400 ? 'medium' : 'low',
       description: '代码重复度',
-      affectedFiles: duplication.fileScores.filter((f: any) => f.score > 100).length,
+      affectedFiles: duplication.fileScores.filter((file) => file.score > 100).length,
     },
     {
       dimension: 'Test Coverage',
@@ -75,7 +87,7 @@ function calculateRadarDimensions(riskFiles: any[], aiDetection: any, duplicatio
     },
     {
       dimension: 'Documentation',
-      score: aiDetection.suspiciousFiles.filter((f: any) => f.reason === 'excessive-comments').length * 10,
+      score: aiDetection.suspiciousFiles.filter((file) => file.reason === 'excessive-comments').length * 10,
       riskLevel: aiDetection.suspiciousFiles.length > 10 ? 'high' : aiDetection.suspiciousFiles.length > 5 ? 'medium' : 'low',
       description: '文档完整性',
       affectedFiles: aiDetection.suspiciousFiles.length,
@@ -97,7 +109,7 @@ function calculateRadarDimensions(riskFiles: any[], aiDetection: any, duplicatio
   ];
 }
 
-function calculateTrends(commits: CommitRecord[]) {
+function calculateTrends(commits: CommitRecord[]): TrendPoint[] {
   const sorted = [...commits].sort((a, b) => a.date.getTime() - b.date.getTime());
   const trends = [];
   const interval = Math.max(1, Math.floor(sorted.length / 20));

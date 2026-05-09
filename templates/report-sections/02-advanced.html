@@ -1,0 +1,267 @@
+    <!-- Hot Files Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">热点文件 TOP 10</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="hot-files-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">修改次数</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">贡献者数</th>
+            </tr>
+          </thead>
+          <tbody id="hot-files-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Solo Files Table (Knowledge Concentration Risk) -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">知识集中度风险 (单人维护文件)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="solo-files-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium">唯一维护者</th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right">提交次数</th>
+            </tr>
+          </thead>
+          <tbody id="solo-files-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Author File Type Stats Table -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <h2 class="text-lg font-semibold mb-4">作者文件类型贡献 TOP 20</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="author-filetype-table">
+          <thead>
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium cursor-pointer hover:text-primary-500 select-none" data-sort="author">作者 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium cursor-pointer hover:text-primary-500 select-none" data-sort="extension">文件类型 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="fileCount">文件数 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="linesAdded">新增行 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="linesDeleted">删除行 <span class="sort-icon"></span></th>
+              <th class="pb-3 text-slate-500 dark:text-slate-400 font-medium text-right cursor-pointer hover:text-primary-500 select-none" data-sort="commits">提交数 <span class="sort-icon"></span></th>
+            </tr>
+          </thead>
+          <tbody id="author-filetype-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 高级分析区域 -->
+    <section id="advanced-analytics" class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg text-primary-600 dark:text-primary-400">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold">高级分析</h2>
+      </div>
+
+      <!-- Tab 导航 -->
+      <div class="advanced-tabs-nav mb-6">
+        <button class="advanced-tab active" data-tab="team-health">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          团队健康度
+        </button>
+        <button class="advanced-tab" data-tab="stability">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          代码稳定性
+        </button>
+        <button class="advanced-tab" data-tab="work-pressure">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          工作压力
+        </button>
+        <button class="advanced-tab" data-tab="contributor-churn">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          贡献者流失
+        </button>
+        <button class="advanced-tab" data-tab="collaboration">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          协作热度
+        </button>
+        <button class="advanced-tab" data-tab="tech-debt">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          技术债雷达
+        </button>
+        <button class="advanced-tab" data-tab="ai-usage" id="ai-usage-tab" style="display: none;">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          🤖 AI 使用分析
+        </button>
+      </div>
+
+      <!-- Tab 内容容器 -->
+      <div id="team-health" class="advanced-tab-content fade-in-up">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
+            <h3 class="text-lg font-semibold mb-6 text-slate-700 dark:text-slate-200">Bus Factor (巴士系数)</h3>
+            <div id="bus-factor-gauge"></div>
+            <p class="text-sm text-slate-500 text-center mt-4 max-w-xs">衡量项目对特定开发者的依赖程度，数值越低风险越高。</p>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 min-h-[300px]">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                关键人员 (Key Authors)
+             </h3>
+             <div id="critical-authors-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="stability" class="advanced-tab-content hidden fade-in-up">
+        <div id="stability-metrics" class="mb-6"></div>
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+           <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              文件流失率 TOP 20
+           </h3>
+           <div id="unstable-files-list"></div>
+        </div>
+      </div>
+
+      <div id="work-pressure" class="advanced-tab-content hidden fade-in-up">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 flex flex-col items-center justify-center">
+              <h3 class="text-lg font-semibold mb-6 text-slate-700 dark:text-slate-200">压力评分</h3>
+              <div id="pressure-gauge"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">提交时间分布</h3>
+              <div id="off-hours-breakdown"></div>
+            </div>
+         </div>
+      </div>
+
+      <div id="contributor-churn" class="advanced-tab-content hidden fade-in-up">
+        <div id="churn-metrics" class="mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">活跃度漏斗</h3>
+              <div id="churn-funnel"></div>
+           </div>
+           <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">作者状态列表</h3>
+              <div id="author-status-list"></div>
+           </div>
+        </div>
+      </div>
+
+      <div id="collaboration" class="advanced-tab-content hidden fade-in-up">
+        <div id="collaboration-metrics" class="mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">强耦合文件 (Tight Coupling)</h3>
+             <div id="file-pairs-list"></div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+             <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">结对编程检测</h3>
+             <div id="pair-programming-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tech Debt Radar -->
+      <div id="tech-debt" class="advanced-tab-content hidden fade-in-up">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 flex flex-col items-center">
+            <h3 class="text-lg font-semibold mb-6 text-slate-700 dark:text-slate-200">技术债雷达图</h3>
+            <div id="tech-debt-radar" class="w-full h-[350px]"></div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">代码重复度热力图</h3>
+            <div id="duplication-heatmap" class="h-[300px]"></div>
+          </div>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 mb-6">
+          <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">风险趋势分析</h3>
+          <div id="risk-trend-chart" class="h-[250px]"></div>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+          <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">高风险文件 TOP 10</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left border-b border-slate-200 dark:border-slate-700">
+                <tr class="text-slate-500 dark:text-slate-400 font-medium">
+                  <th class="pb-3">文件路径</th>
+                  <th class="pb-3 text-right">风险指数</th>
+                  <th class="pb-3 text-right">复杂度</th>
+                </tr>
+              </thead>
+              <tbody id="risk-files-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Usage Analysis Tab -->
+      <div id="ai-usage" class="advanced-tab-content hidden fade-in-up">
+        <!-- High AI + High Activity Directories -->
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">⚠️ 高 AI + 高活跃目录</h3>
+            <span class="text-xs text-slate-500 dark:text-slate-400">建议加强 Code Review 和测试覆盖</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left border-b border-slate-200 dark:border-slate-700">
+                <tr class="text-slate-500 dark:text-slate-400 font-medium">
+                  <th class="pb-3">目录</th>
+                  <th class="pb-3 text-right">提交数</th>
+                  <th class="pb-3 text-right">AI 占比</th>
+                  <th class="pb-3 text-right">最后修改</th>
+                  <th class="pb-3 text-center">风险等级</th>
+                </tr>
+              </thead>
+              <tbody id="high-ai-dirs-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- High AI Commits Leaderboard -->
+        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">🤖 高 AI 提交榜单 TOP 20</h3>
+            <span class="text-xs text-slate-500 dark:text-slate-400">AI 评分 > 50 的提交</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left border-b border-slate-200 dark:border-slate-700">
+                <tr class="text-slate-500 dark:text-slate-400 font-medium">
+                  <th class="pb-3">提交哈希</th>
+                  <th class="pb-3">作者</th>
+                  <th class="pb-3 text-right">AI 评分</th>
+                  <th class="pb-3 text-right">变更行数</th>
+                  <th class="pb-3 text-right">文件数</th>
+                  <th class="pb-3">日期</th>
+                </tr>
+              </thead>
+              <tbody id="high-ai-commits-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+

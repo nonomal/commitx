@@ -1,0 +1,275 @@
+  // ============================================================
+  // 个人提交明细
+  // ============================================================
+  function setupCommitDetailFilters() {
+    ['detail-author', 'detail-from', 'detail-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', () => {
+          detailCurrentPage = 1;
+          detailExpandedCommits.clear();
+          renderPersonalCommitDetails();
+        });
+      }
+    });
+
+  }
+
+  function bindDetailListControls(container, pagination) {
+    pagination.querySelectorAll('[data-detail-action="page"]').forEach(button => {
+      button.addEventListener('click', () => {
+        if (button.disabled) return;
+        detailCurrentPage = Number(button.getAttribute('data-detail-page')) || 1;
+        renderPersonalCommitDetails();
+      });
+    });
+
+    container.querySelectorAll('[data-detail-action="toggle-files"]').forEach(button => {
+      button.addEventListener('click', () => {
+        const key = button.getAttribute('data-detail-key');
+        if (!key) return;
+        if (detailExpandedCommits.has(key)) {
+          detailExpandedCommits.delete(key);
+        } else {
+          detailExpandedCommits.add(key);
+        }
+        renderPersonalCommitDetails();
+      });
+    });
+  }
+
+  function initCommitDetailFilters(commits) {
+    if (detailFiltersReady) return;
+
+    const authorSelect = document.getElementById('detail-author');
+    const fromInput = document.getElementById('detail-from');
+    const toInput = document.getElementById('detail-to');
+    if (!authorSelect || !fromInput || !toInput) return;
+
+    const authors = new Map();
+    commits.forEach(commit => {
+      const key = commit.email.toLowerCase();
+      if (!authors.has(key)) {
+        authors.set(key, `${commit.author} <${commit.email}>`);
+      }
+    });
+
+    authorSelect.innerHTML = '<option value="">全部作者</option>' +
+      Array.from(authors.entries())
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([email, label]) => `<option value="${escapeHtml(email)}">${escapeHtml(label)}</option>`)
+        .join('');
+
+    const dates = commits.map(commit => formatDateKeyLocal(commit.date)).sort();
+    const minDate = DATA.timeRange ? DATA.timeRange.from : dates[0];
+    const maxDate = DATA.timeRange ? DATA.timeRange.to : dates[dates.length - 1];
+
+    if (minDate) {
+      fromInput.value = minDate;
+      fromInput.min = minDate;
+      toInput.min = minDate;
+    }
+    if (maxDate) {
+      toInput.value = maxDate;
+      fromInput.max = maxDate;
+      toInput.max = maxDate;
+    }
+
+    detailFiltersReady = true;
+  }
+
+  function getFilteredCommitDetails() {
+    const commits = stats.commitDetails || [];
+    initCommitDetailFilters(commits);
+
+    const author = document.getElementById('detail-author')?.value || '';
+    const from = document.getElementById('detail-from')?.value || '';
+    const to = document.getElementById('detail-to')?.value || '';
+
+    return commits
+      .filter(commit => {
+        const dateKey = formatDateKeyLocal(commit.date);
+        const email = commit.email.toLowerCase();
+        return (!author || email === author) &&
+          (!from || dateKey >= from) &&
+          (!to || dateKey <= to);
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+
+  function renderPersonalCommitDetails() {
+    const commits = stats.commitDetails || [];
+    const root = document.getElementById('detail-commits');
+    if (!root) return;
+
+    if (commits.length === 0) {
+      document.getElementById('detail-total').textContent = '0';
+      document.getElementById('detail-days').textContent = '0';
+      document.getElementById('detail-added').textContent = '+0';
+      document.getElementById('detail-deleted').textContent = '-0';
+      document.getElementById('detail-hourly').innerHTML = '<p class="text-sm text-slate-400">暂无数据</p>';
+      document.getElementById('detail-daily').innerHTML = '<p class="text-sm text-slate-400">暂无数据</p>';
+      document.getElementById('detail-list-meta').textContent = '';
+      document.getElementById('detail-pagination').innerHTML = '';
+      root.innerHTML = '<p class="text-sm text-slate-400">暂无数据</p>';
+      return;
+    }
+
+    const filtered = getFilteredCommitDetails();
+    const totalAdded = filtered.reduce((sum, commit) => sum + commit.linesAdded, 0);
+    const totalDeleted = filtered.reduce((sum, commit) => sum + commit.linesDeleted, 0);
+    const daySet = new Set(filtered.map(commit => formatDateKeyLocal(commit.date)));
+
+    document.getElementById('detail-total').textContent = formatNumber(filtered.length);
+    document.getElementById('detail-days').textContent = formatNumber(daySet.size);
+    document.getElementById('detail-added').textContent = '+' + formatNumber(totalAdded);
+    document.getElementById('detail-deleted').textContent = '-' + formatNumber(totalDeleted);
+
+    renderDetailHourly(filtered);
+    renderDetailDaily(filtered);
+    renderDetailCommitList(filtered);
+  }
+
+  function renderDetailHourly(commits) {
+    const container = document.getElementById('detail-hourly');
+    const hours = new Array(24).fill(0);
+    commits.forEach(commit => {
+      hours[new Date(commit.date).getHours()]++;
+    });
+
+    const max = Math.max(...hours, 1);
+    const rows = hours
+      .map((count, hour) => ({ hour, count }))
+      .filter(item => item.count > 0);
+
+    if (rows.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-400">当前筛选无提交</p>';
+      return;
+    }
+
+    container.innerHTML = rows.map(({ hour, count }) => `
+      <div class="flex items-center gap-3">
+        <div class="w-12 text-xs text-slate-500 dark:text-slate-400">${String(hour).padStart(2, '0')}:00</div>
+        <div class="flex-1 h-2 rounded bg-slate-100 dark:bg-slate-700 overflow-hidden">
+          <div class="h-2 rounded bg-primary-500" style="width: ${(count / max) * 100}%"></div>
+        </div>
+        <div class="w-10 text-right text-xs font-medium">${count}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderDetailDaily(commits) {
+    const container = document.getElementById('detail-daily');
+    const daily = new Map();
+
+    commits.forEach(commit => {
+      const key = formatDateKeyLocal(commit.date);
+      if (!daily.has(key)) daily.set(key, []);
+      daily.get(key).push(commit);
+    });
+
+    if (daily.size === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-400">当前筛选无提交</p>';
+      return;
+    }
+
+    container.innerHTML = Array.from(daily.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, items]) => {
+        const added = items.reduce((sum, commit) => sum + commit.linesAdded, 0);
+        const deleted = items.reduce((sum, commit) => sum + commit.linesDeleted, 0);
+        return `
+          <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+            <div class="flex items-center justify-between gap-3">
+              <div class="font-medium text-slate-700 dark:text-slate-200">${date}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400">${items.length} 次，+${formatNumber(added)} / -${formatNumber(deleted)}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  function getDetailCommitKey(commit) {
+    return `${commit.repoName || ''}::${commit.hash}`;
+  }
+
+  function renderDetailCommitList(commits) {
+    const container = document.getElementById('detail-commits');
+    const meta = document.getElementById('detail-list-meta');
+    const pagination = document.getElementById('detail-pagination');
+
+    if (commits.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-400">当前筛选无提交</p>';
+      meta.textContent = '';
+      pagination.innerHTML = '';
+      return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(commits.length / DETAIL_PAGE_SIZE));
+    detailCurrentPage = Math.min(Math.max(1, detailCurrentPage), totalPages);
+    const start = (detailCurrentPage - 1) * DETAIL_PAGE_SIZE;
+    const pageCommits = commits.slice(start, start + DETAIL_PAGE_SIZE);
+    const end = start + pageCommits.length;
+
+    meta.textContent = commits.length > 1000
+      ? `筛选结果 ${formatNumber(commits.length)} 条，当前分页渲染 ${formatNumber(start + 1)}-${formatNumber(end)} 条`
+      : `显示 ${formatNumber(start + 1)}-${formatNumber(end)} / ${formatNumber(commits.length)} 条`;
+
+    pagination.innerHTML = totalPages <= 1 ? '' : `
+      <button type="button" data-detail-action="page" data-detail-page="${detailCurrentPage - 1}"
+        class="px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+        ${detailCurrentPage === 1 ? 'disabled' : ''}>上一页</button>
+      <span class="text-xs text-slate-500 dark:text-slate-400">${detailCurrentPage} / ${totalPages}</span>
+      <button type="button" data-detail-action="page" data-detail-page="${detailCurrentPage + 1}"
+        class="px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+        ${detailCurrentPage === totalPages ? 'disabled' : ''}>下一页</button>
+    `;
+
+    container.innerHTML = pageCommits.map(commit => {
+      const key = getDetailCommitKey(commit);
+      const isExpanded = detailExpandedCommits.has(key);
+      const files = !isExpanded
+        ? ''
+        : commit.files.length === 0
+        ? '<div class="text-xs text-slate-400 py-2">无文件变更记录</div>'
+        : commit.files.map(file => `
+            <div class="grid grid-cols-[1fr_auto_auto] gap-3 py-1.5 border-t border-slate-100 dark:border-slate-700/50 first:border-t-0">
+              <div class="truncate font-mono text-xs text-slate-600 dark:text-slate-300" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</div>
+              <div class="text-xs text-emerald-600 dark:text-emerald-400 text-right">+${formatNumber(file.added)}</div>
+              <div class="text-xs text-rose-600 dark:text-rose-400 text-right">-${formatNumber(file.deleted)}</div>
+            </div>
+          `).join('');
+
+      return `
+        <div class="rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-3">
+            <div class="min-w-0">
+              <div class="font-medium text-slate-800 dark:text-slate-100 truncate" title="${escapeHtml(commit.message)}">${escapeHtml(commit.message)}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <span class="font-mono">${escapeHtml(commit.hash.slice(0, 10))}</span>
+                <span class="mx-1">·</span>
+                <span>${escapeHtml(commit.author)}</span>
+                ${commit.repoName ? `<span class="mx-1">·</span><span>${escapeHtml(commit.repoName)}</span>` : ''}
+                <span class="mx-1">·</span>
+                <span>${formatDateTimeLocal(commit.date)}</span>
+              </div>
+            </div>
+            <div class="shrink-0 text-sm flex items-center gap-3">
+              <div>
+                <span class="text-emerald-600 dark:text-emerald-400">+${formatNumber(commit.linesAdded)}</span>
+                <span class="text-slate-400 mx-1">/</span>
+                <span class="text-rose-600 dark:text-rose-400">-${formatNumber(commit.linesDeleted)}</span>
+              </div>
+              <button type="button" data-detail-action="toggle-files" data-detail-key="${escapeHtml(key)}"
+                class="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 hover:text-primary-500">
+                ${isExpanded ? '收起文件' : `展开文件 (${formatNumber(commit.files.length)})`}
+              </button>
+            </div>
+          </div>
+          <div>${files}</div>
+        </div>
+      `;
+    }).join('');
+    bindDetailListControls(container, pagination);
+  }

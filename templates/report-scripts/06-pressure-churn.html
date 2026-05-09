@@ -1,0 +1,345 @@
+  // ============================================================
+  // 高级分析 - 工作压力
+  // ============================================================
+  function renderWorkPressure() {
+    const workPressure = DATA.stats.workPressure;
+
+    // 检查数据是否存在
+    if (!workPressure) {
+      document.getElementById('work-pressure').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">工作压力分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { pressureScore, lateNightCommits, earlyMorningCommits,
+            weekendCommits, holidayCommits, offHoursRate } = workPressure;
+
+    // 1. 渲染压力评分仪表盘
+    renderPressureGauge(pressureScore, offHoursRate);
+
+    // 2. 渲染非工作时间分布
+    renderOffHoursBreakdown(lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits);
+  }
+
+  // 压力评分仪表盘（半圆仪表）
+  function renderPressureGauge(pressureScore, offHoursRate) {
+    const container = d3.select('#pressure-gauge');
+    container.html(''); // 清空
+
+    // 压力等级颜色映射
+    const getColor = (score) => {
+      if (score < 30) return '#10b981';  // 绿色 - 低压力
+      if (score < 60) return '#f59e0b';  // 橙色 - 中等压力
+      return '#ef4444';                   // 红色 - 高压力
+    };
+    const color = getColor(pressureScore);
+
+    // SVG 尺寸
+    const width = 240;
+    const height = 140;
+    const radius = 90;
+
+    const svg = container.append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2}, ${height - 10})`);
+
+    // 背景半圆（灰色）
+    const bgArc = d3.arc()
+      .innerRadius(radius - 15)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(Math.PI / 2);
+
+    svg.append('path')
+      .attr('d', bgArc)
+      .attr('fill', '#e2e8f0')
+      .attr('class', 'dark:fill-slate-600');
+
+    // 前景半圆（根据压力评分）
+    const targetAngle = -Math.PI / 2 + (Math.PI * pressureScore / 100);
+
+    const foregroundArc = d3.arc()
+      .innerRadius(radius - 15)
+      .outerRadius(radius)
+      .startAngle(-Math.PI / 2)
+      .endAngle(targetAngle);
+
+    svg.append('path')
+      .attr('d', foregroundArc)
+      .attr('fill', color);
+
+    // 中心文本 - 压力评分
+    svg.append('text')
+      .attr('y', -25)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-5xl font-bold')
+      .attr('fill', color)
+      .text(pressureScore.toFixed(0));
+
+    // 压力等级标签
+    const levelLabels = { low: '低压力', medium: '中等压力', high: '高压力' };
+    const level = pressureScore < 30 ? 'low' : pressureScore < 60 ? 'medium' : 'high';
+    svg.append('text')
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('class', 'text-sm font-medium fill-slate-500 dark:fill-slate-400')
+      .text(levelLabels[level]);
+
+    // 非工作时间占比
+    d3.select('#pressure-gauge')
+      .append('div')
+      .attr('class', 'text-center mt-2 text-xs text-slate-400')
+      .text(`非工作时间提交: ${(offHoursRate * 100).toFixed(1)}%`);
+  }
+
+  // 非工作时间分布
+  function renderOffHoursBreakdown(lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits) {
+    const container = document.getElementById('off-hours-breakdown');
+
+    const total = DATA.stats.totalCommits || 1;
+    const normalCommits = total - lateNightCommits - earlyMorningCommits - weekendCommits - holidayCommits.reduce((sum, h) => sum + h.commits, 0);
+
+    const data = [
+      { label: '正常时间', count: normalCommits, color: '#10b981', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { label: '深夜 (23-02)', count: lateNightCommits, color: '#8b5cf6', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
+      { label: '凌晨 (02-06)', count: earlyMorningCommits, color: '#ef4444', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
+      { label: '周末', count: weekendCommits, color: '#f59e0b', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      { label: '假期', count: holidayCommits.reduce((sum, h) => sum + h.commits, 0), color: '#ec4899', icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' }
+    ].filter(d => d.count > 0);
+
+    let html = '<div class="space-y-3">';
+
+    data.forEach(item => {
+      const percentage = ((item.count / total) * 100).toFixed(1);
+      html += `
+        <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700/50">
+          <div class="flex items-center gap-3">
+             <div class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+               <svg class="w-5 h-5" style="color: ${item.color}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}" />
+               </svg>
+             </div>
+             <div>
+               <div class="text-sm font-medium text-slate-700 dark:text-slate-200">${item.label}</div>
+               <div class="text-xs text-slate-500 dark:text-slate-400">${item.count} 次提交</div>
+             </div>
+          </div>
+          <div class="text-right">
+             <div class="text-lg font-bold" style="color: ${item.color}">${percentage}%</div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+
+    // 假期提交列表
+    if (holidayCommits && holidayCommits.length > 0) {
+      html += '<div class="mt-6"><h4 class="text-sm font-semibold mb-2 text-slate-600 dark:text-slate-300">假期提交记录</h4></div>';
+      html += '<div class="space-y-2 max-h-[150px] overflow-y-auto scrollbar-thin">';
+
+      holidayCommits.forEach((holiday) => {
+        html += `
+          <div class="flex items-center justify-between text-sm py-2 px-3 bg-rose-50 dark:bg-rose-900/10 rounded-lg border border-rose-100 dark:border-rose-900/20">
+             <span class="text-rose-700 dark:text-rose-300 font-medium">${escapeHtml(holiday.holidayName)}</span>
+             <div class="flex items-center gap-3">
+               <span class="text-xs text-slate-500">${holiday.date}</span>
+               <span class="bg-rose-200 dark:bg-rose-800 text-rose-800 dark:text-rose-100 px-2 py-0.5 rounded text-xs">${holiday.commits}</span>
+             </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  // ============================================================
+  // 高级分析 - 贡献者流失
+  // ============================================================
+  function renderContributorChurn() {
+    const contributorChurn = DATA.stats.contributorChurn;
+
+    // 检查数据是否存在
+    if (!contributorChurn) {
+      document.getElementById('contributor-churn').innerHTML =
+        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
+        '<p class="text-lg mb-2">贡献者流失分析</p>' +
+        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
+        '</div>';
+      return;
+    }
+
+    const { active, occasional, dormant, lost, newJoiners,
+            churnRate, retentionRate, growthRate } = contributorChurn;
+
+    // 1. 渲染关键指标卡片
+    renderChurnMetrics(churnRate, retentionRate, growthRate, newJoiners.length);
+
+    // 2. 渲染漏斗图
+    renderChurnFunnel(active.length, occasional.length, dormant.length, lost.length);
+
+    // 3. 渲染作者状态列表
+    renderAuthorStatusList(active, occasional, dormant, lost);
+  }
+
+  // 关键指标卡片
+  function renderChurnMetrics(churnRate, retentionRate, growthRate, newJoinersCount) {
+    const container = document.getElementById('churn-metrics');
+
+    let html = '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">';
+
+    // 辅助函数：生成卡片 HTML
+    const createCard = (label, value, color, iconPath) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 flex flex-col justify-between h-full border border-slate-100 dark:border-slate-700/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm text-slate-500 dark:text-slate-400 font-medium">${label}</div>
+          <div class="${color} p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+             </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+      </div>
+    `;
+
+    // 流失率
+    const churnColor = churnRate > 0.3 ? 'text-rose-500' : churnRate > 0.15 ? 'text-amber-500' : 'text-emerald-500';
+    html += createCard(
+      '流失率',
+      (churnRate * 100).toFixed(1) + '%',
+      churnColor,
+      'M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6'
+    );
+
+    // 留存率
+    const retentionColor = retentionRate > 0.7 ? 'text-emerald-500' : retentionRate > 0.4 ? 'text-amber-500' : 'text-rose-500';
+    html += createCard(
+      '留存率',
+      (retentionRate * 100).toFixed(1) + '%',
+      retentionColor,
+      'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'
+    );
+
+    // 增长率
+    const growthColor = growthRate > 0.2 ? 'text-emerald-500' : growthRate > 0 ? 'text-amber-500' : 'text-slate-500';
+    html += createCard(
+      '增长率',
+      (growthRate * 100).toFixed(1) + '%',
+      growthColor,
+      'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+    );
+
+    // 新加入者数
+    html += createCard(
+      '新加入者',
+      newJoinersCount,
+      'text-primary-500',
+      'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'
+    );
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // 漏斗图（4级分类）
+  function renderChurnFunnel(activeCount, occasionalCount, dormantCount, lostCount) {
+    const container = document.getElementById('churn-funnel');
+    const total = activeCount + occasionalCount + dormantCount + lostCount;
+    
+    if (total === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400 mt-4">无贡献者数据</p>';
+      return;
+    }
+
+    const levels = [
+      { label: '活跃 (Active)', count: activeCount, color: '#10b981', desc: '<30天' },
+      { label: '偶尔 (Occasional)', count: occasionalCount, color: '#f59e0b', desc: '30-90天' },
+      { label: '休眠 (Dormant)', count: dormantCount, color: '#fb923c', desc: '90-180天' },
+      { label: '流失 (Lost)', count: lostCount, color: '#ef4444', desc: '>180天' }
+    ];
+
+    let html = '<div class="space-y-4 py-4">';
+
+    levels.forEach((level, index) => {
+      const percentage = ((level.count / total) * 100).toFixed(1);
+      const width = Math.max(30, 100 - index * 15); // 漏斗宽度递减
+      
+      html += `<div class="relative flex justify-center">`;
+      html += `  <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">`;
+      html += `     <div style="width: ${width}%; background-color: ${level.color};" class="h-full rounded-lg"></div>`;
+      html += `  </div>`;
+      html += `  <div class="w-full max-w-md flex items-center justify-between px-4 py-2 relative z-10">`;
+      html += `    <div class="flex items-center gap-3">`;
+      html += `      <div class="w-2.5 h-2.5 rounded-full" style="background-color: ${level.color}"></div>`;
+      html += `      <div>`;
+      html += `        <div class="text-sm font-medium text-slate-700 dark:text-slate-200">${level.label}</div>`;
+      html += `        <div class="text-[10px] text-slate-400">${level.desc}</div>`;
+      html += `      </div>`;
+      html += `    </div>`;
+      html += `    <div class="text-right">`;
+      html += `      <div class="text-lg font-bold" style="color: ${level.color}">${level.count}</div>`;
+      html += `      <div class="text-xs text-slate-400">${percentage}%</div>`;
+      html += `    </div>`;
+      html += `  </div>`;
+      html += `</div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // 作者状态列表
+  function renderAuthorStatusList(active, occasional, dormant, lost) {
+    const container = document.getElementById('author-status-list');
+
+    const allAuthors = [
+      ...active.map(a => ({ ...a, status: '活跃', statusColor: 'emerald', statusBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' })),
+      ...occasional.map(a => ({ ...a, status: '偶尔', statusColor: 'amber', statusBg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' })),
+      ...dormant.map(a => ({ ...a, status: '休眠', statusColor: 'orange', statusBg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' })),
+      ...lost.map(a => ({ ...a, status: '流失', statusColor: 'rose', statusBg: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' }))
+    ];
+
+    if (allAuthors.length === 0) {
+      container.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无作者数据</p>';
+      return;
+    }
+
+    // 按最后提交日期降序排序
+    allAuthors.sort((a, b) => new Date(b.lastCommitDate).getTime() - new Date(a.lastCommitDate).getTime());
+
+    let html = '<div class="overflow-x-auto max-h-[350px] overflow-y-auto scrollbar-thin">';
+    html += '<table class="w-full text-sm">';
+    html += '<thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50 backdrop-blur-sm z-10">';
+    html += '<tr class="text-left border-b border-slate-200 dark:border-slate-600">';
+    html += '<th class="py-2 pl-2 text-slate-500 dark:text-slate-400 font-medium">姓名</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium">状态</th>';
+    html += '<th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">上次活跃</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">';
+
+    allAuthors.forEach((author) => {
+      const days = author.daysSinceLastCommit;
+      const daysText = days === 0 ? '今天' : `${days}天前`;
+      
+      html += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">`;
+      html += `<td class="py-2.5 pl-2 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[100px]" title="${escapeHtml(author.name)}">${escapeHtml(author.name)}</td>`;
+      html += `<td class="py-2.5"><span class="px-2 py-0.5 rounded text-xs font-medium ${author.statusBg}">${author.status}</span></td>`;
+      html += `<td class="py-2.5 text-right text-slate-500 dark:text-slate-400 text-xs">${daysText}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
