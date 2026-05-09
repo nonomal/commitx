@@ -142,6 +142,19 @@ export interface BusiestDay {
   count: number;
 }
 
+/** 报告页使用的单次提交明细 */
+export interface CommitDetail {
+  hash: string;
+  author: string;
+  email: string;
+  repoName: string;
+  date: Date;
+  message: string;
+  linesAdded: number;
+  linesDeleted: number;
+  files: FileChange[];
+}
+
 /** 核心统计指标 */
 export interface CommitStats {
   // 基础统计
@@ -176,6 +189,7 @@ export interface CommitStats {
   collaboration: CollaborationMetrics;
   messageStats: CommitMessageStats;
   authorFileTypeContributions: AuthorFileTypeContribution[];
+  commitDetails: CommitDetail[];
 
   // 高级统计（可选，向后兼容）
   teamHealth?: TeamHealthMetrics;

@@ -51,6 +51,10 @@ function serializeStats(stats: CommitStats): Record<string, unknown> {
       ...a,
       lastActiveDate: a.lastActiveDate.toISOString(),
     })),
+    commitDetails: stats.commitDetails.map((commit) => ({
+      ...commit,
+      date: commit.date.toISOString(),
+    })),
     contributorChurn: stats.contributorChurn
       ? {
           ...stats.contributorChurn,

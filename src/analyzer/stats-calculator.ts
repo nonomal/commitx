@@ -11,6 +11,7 @@ import type {
   CollaborationMetrics,
   CommitMessageStats,
   AuthorFileTypeContribution,
+  CommitDetail,
   HotFile,
   WeeklyPoint,
   CumulativePoint,
@@ -202,6 +203,7 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     collaboration: calculateCollaboration(sorted),
     messageStats: calculateMessageStats(sorted),
     authorFileTypeContributions: calculateAuthorFileTypeContributions(sorted),
+    commitDetails: calculateCommitDetails(sorted),
     aiMetrics: aiStats.aiMetrics,
     authorAIStats: aiStats.authorAIStats,
     directoryAIStats: aiStats.directoryAIStats,
@@ -365,6 +367,8 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
         (merged.messageStats.typeDistribution[type] || 0) + count;
     }
     merged.messageStats.avgMessageLength += stats.messageStats.avgMessageLength;
+
+    merged.commitDetails.push(...stats.commitDetails);
   }
 
   // 重新计算最繁忙的一天
@@ -426,6 +430,9 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
 
   // Commit Message 平均长度
   merged.messageStats.avgMessageLength /= repoCount;
+
+  // 提交明细排序
+  merged.commitDetails.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   // 作者文件类型贡献合并
   const contributionMap = new Map<string, AuthorFileTypeContribution>();
@@ -490,6 +497,7 @@ function emptyStats(): CommitStats {
     collaboration: emptyCollaborationMetrics(),
     messageStats: emptyMessageStats(),
     authorFileTypeContributions: [],
+    commitDetails: [],
   };
 }
 
@@ -505,6 +513,31 @@ function formatDateKey(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/** 生成报告页筛选用的提交明细 */
+function calculateCommitDetails(commits: CommitRecord[]): CommitDetail[] {
+  return commits.map((commit) => {
+    let linesAdded = 0;
+    let linesDeleted = 0;
+
+    for (const file of commit.files) {
+      linesAdded += file.added;
+      linesDeleted += file.deleted;
+    }
+
+    return {
+      hash: commit.hash,
+      author: commit.author,
+      email: commit.email,
+      repoName: '',
+      date: commit.date,
+      message: commit.message,
+      linesAdded,
+      linesDeleted,
+      files: commit.files.map((file) => ({ ...file })),
+    };
+  });
 }
 
 // ============================================================

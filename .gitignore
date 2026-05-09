@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.test-dist/
 *.tgz
 
 # 生成的报告文件

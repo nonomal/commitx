@@ -46,6 +46,9 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
         ...advancedStats,
         ...(techDebt && { techDebt }),
       };
+      fullStats.commitDetails.forEach((commit) => {
+        commit.repoName = repo.name;
+      });
 
       allStats.push(fullStats);
     } catch (error) {
