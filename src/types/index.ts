@@ -1,5 +1,4 @@
-// commit-report 类型定义
-
+import type { EngineeringMetrics } from './engineering.js';
 /** 单条 Git 提交记录 */
 export interface CommitRecord {
   hash: string;
@@ -7,6 +6,8 @@ export interface CommitRecord {
   email: string;
   date: Date;
   message: string;
+  body?: string;
+  parentHashes?: string[];
   files: FileChange[];
 }
 
@@ -15,6 +16,7 @@ export interface FileChange {
   added: number;
   deleted: number;
   path: string;
+  status?: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied' | 'unknown';
 }
 
 /** 作者统计信息 */
@@ -194,6 +196,7 @@ export interface CommitStats {
   contributorChurn?: ContributorChurnMetrics;
   advancedCollaboration?: AdvancedCollaborationMetrics;
   techDebt?: TechDebtStats;
+  engineering?: EngineeringMetrics;
 
   // AI 使用统计（可选）
   aiMetrics?: AIMetrics;
@@ -201,6 +204,8 @@ export interface CommitStats {
   directoryAIStats?: DirectoryAIStats[];
   aiTrends?: AITrendPoint[];
 }
+
+export type * from './engineering.js';
 
 /** 仓库信息 */
 export interface RepoInfo {

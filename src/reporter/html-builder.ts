@@ -14,6 +14,7 @@ const REPORT_SCRIPT_FILES = [
   'report-scripts/04-trend-charts.html',
   'report-scripts/05-tables-team-stability.html',
   'report-scripts/06-pressure-churn.html',
+  'report-scripts/08-engineering.html',
   'report-scripts/07-collab-debt-ai.html',
 ];
 

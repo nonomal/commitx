@@ -41,3 +41,39 @@ test('parseGitLog passes author filters without shell expansion', async () => {
     rmSync(repoPath, { recursive: true, force: true });
   }
 });
+
+test('parseGitLog includes commit body, parent hashes, and file status', async () => {
+  const repoPath = mkdtempSync(join(tmpdir(), 'commitx-parser-'));
+
+  try {
+    runGit(repoPath, ['init']);
+    runGit(repoPath, ['config', 'user.name', 'Test User']);
+    runGit(repoPath, ['config', 'user.email', 'test@example.com']);
+
+    writeFileSync(join(repoPath, 'created.txt'), 'hello\n');
+    runGit(repoPath, ['add', 'created.txt']);
+    runGit(repoPath, [
+      'commit',
+      '-m',
+      'feat(core): create file',
+      '-m',
+      'Co-authored-by: Reviewer <reviewer@example.com>',
+    ]);
+
+    writeFileSync(join(repoPath, 'created.txt'), 'hello\nworld\n');
+    runGit(repoPath, ['add', 'created.txt']);
+    runGit(repoPath, ['commit', '-m', 'fix(core): update file']);
+
+    const commits = await parseGitLog(repoPath, null);
+
+    assert.equal(commits.length, 2);
+    assert.equal(commits[0].message, 'fix(core): update file');
+    assert.equal(commits[0].parentHashes.length, 1);
+    assert.equal(commits[0].files[0].status, 'modified');
+    assert.equal(commits[1].message, 'feat(core): create file');
+    assert.match(commits[1].body, /Co-authored-by: Reviewer <reviewer@example.com>/);
+    assert.equal(commits[1].files[0].status, 'added');
+  } finally {
+    rmSync(repoPath, { recursive: true, force: true });
+  }
+});

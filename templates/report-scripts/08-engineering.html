@@ -1,0 +1,199 @@
+  // ============================================================
+  // 工程质量分析
+  // ============================================================
+  function renderEngineeringMetrics() {
+    const engineering = stats.engineering;
+    const empty = document.getElementById('engineering-empty');
+    const content = document.getElementById('engineering-content');
+
+    if (!engineering) {
+      empty.classList.remove('hidden');
+      content.classList.add('hidden');
+      return;
+    }
+
+    empty.classList.add('hidden');
+    content.classList.remove('hidden');
+    renderEngineeringScoreCards(engineering);
+    renderBugHotFiles(engineering.bugFixHotFiles);
+    renderCodeOwnership(engineering.codeOwnership);
+    renderReviewQuality(engineering.reviewQuality);
+    renderChangeMix(engineering.changeMix);
+  }
+
+  function renderEngineeringScoreCards(engineering) {
+    const container = document.getElementById('engineering-score-cards');
+    const quality = engineering.commitQuality;
+    const review = engineering.reviewQuality;
+    const ownership = engineering.codeOwnership;
+
+    const scoreColor = quality.score >= 80 ? 'text-emerald-500' :
+      quality.score >= 60 ? 'text-amber-500' : 'text-rose-500';
+
+    const cards = [
+      ['Commit 质量', quality.score, scoreColor, '团队综合评分'],
+      ['规范度', formatPercent(quality.conventionalRate), 'text-primary-500', 'Conventional Commits'],
+      ['Scope 覆盖', formatPercent(quality.scopeCoverageRate), 'text-indigo-500', '带模块范围的提交'],
+      ['平均长度', quality.averageMessageLength.toFixed(1), 'text-slate-700 dark:text-slate-200', 'Subject 字符数'],
+      ['Review 参与', formatPercent(review.reviewParticipationRate), 'text-emerald-500', 'Merge trailer 覆盖'],
+      ['HEAD 文件', formatNumber(ownership ? ownership.totalFiles : 0), 'text-slate-700 dark:text-slate-200', 'blame 可分析文件'],
+    ];
+
+    container.innerHTML = `
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        ${cards.map(([label, value, color, desc]) => `
+          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700/50">
+            <div class="text-sm text-slate-500 dark:text-slate-400 font-medium mb-2">${label}</div>
+            <div class="text-2xl font-bold ${color}">${value}</div>
+            <div class="text-xs text-slate-400 mt-1">${desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderBugHotFiles(bugFixHotFiles) {
+    const container = document.getElementById('bug-hot-files-list');
+    const files = bugFixHotFiles.hotFiles || [];
+
+    if (files.length === 0) {
+      container.innerHTML = emptyEngineeringMessage('暂无 fix: 文件热点');
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="overflow-x-auto max-h-[360px] overflow-y-auto scrollbar-thin">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50">
+            <tr class="text-left border-b border-slate-200 dark:border-slate-600">
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">修复次数</th>
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">作者数</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${files.slice(0, 20).map(file => `
+              <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                <td class="py-3 pr-4 font-mono text-xs text-slate-700 dark:text-slate-300 truncate max-w-sm" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</td>
+                <td class="py-3 text-right font-semibold text-rose-500">${formatNumber(file.fixCount)}</td>
+                <td class="py-3 text-right text-slate-600 dark:text-slate-400">${formatNumber(file.fixAuthors.length)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderCodeOwnership(ownership) {
+    const container = document.getElementById('code-ownership-list');
+    const files = ownership ? ownership.files || [] : [];
+
+    if (files.length === 0) {
+      container.innerHTML = emptyEngineeringMessage('暂无 blame 所有权数据');
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="overflow-x-auto max-h-[360px] overflow-y-auto scrollbar-thin">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-50 dark:bg-slate-700/50">
+            <tr class="text-left border-b border-slate-200 dark:border-slate-600">
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium">文件路径</th>
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium">主导者</th>
+              <th class="py-2 text-slate-500 dark:text-slate-400 font-medium text-right">占比</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${files.slice(0, 20).map(file => `
+              <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50">
+                <td class="py-3 pr-4 font-mono text-xs text-slate-700 dark:text-slate-300 truncate max-w-xs" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</td>
+                <td class="py-3 text-slate-700 dark:text-slate-300">${escapeHtml(file.ownerName)}</td>
+                <td class="py-3 text-right">
+                  <span class="px-2 py-1 rounded text-xs font-semibold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">${formatPercent(file.ownershipRatio)}</span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderReviewQuality(reviewQuality) {
+    const container = document.getElementById('review-quality-list');
+    const reviewers = reviewQuality.reviewers || [];
+
+    if (reviewQuality.mergeCommitCount === 0) {
+      container.innerHTML = emptyEngineeringMessage('暂无 merge commit 数据');
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-3">
+          <div class="text-xs text-slate-400">Merge</div>
+          <div class="text-xl font-bold">${formatNumber(reviewQuality.mergeCommitCount)}</div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-3">
+          <div class="text-xs text-slate-400">带评审</div>
+          <div class="text-xl font-bold text-emerald-500">${formatNumber(reviewQuality.reviewedMergeCount)}</div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-3">
+          <div class="text-xs text-slate-400">参与率</div>
+          <div class="text-xl font-bold">${formatPercent(reviewQuality.reviewParticipationRate)}</div>
+        </div>
+      </div>
+      <div class="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin">
+        ${reviewers.length === 0 ? emptyEngineeringMessage('暂无 reviewer trailer') : reviewers.map(reviewer => `
+          <div class="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg px-3 py-2">
+            <div>
+              <div class="font-medium text-slate-700 dark:text-slate-200">${escapeHtml(reviewer.name)}</div>
+              <div class="text-xs text-slate-400">${escapeHtml(reviewer.email)}</div>
+            </div>
+            <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">${formatNumber(reviewer.commits)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderChangeMix(changeMix) {
+    const container = document.getElementById('change-mix-list');
+    const total = changeMix.createdFiles + changeMix.deletedFiles + changeMix.modifiedFiles;
+    const featureWidth = total > 0 ? changeMix.featureRatio * 100 : 0;
+    const refactorWidth = total > 0 ? changeMix.refactorRatio * 100 : 0;
+
+    container.innerHTML = `
+      <div class="mb-5">
+        <div class="flex h-4 overflow-hidden rounded bg-slate-200 dark:bg-slate-800">
+          <div class="bg-emerald-500" style="width: ${featureWidth}%"></div>
+          <div class="bg-amber-500" style="width: ${refactorWidth}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
+          <span>新增 ${formatPercent(changeMix.featureRatio)}</span>
+          <span>重构 ${formatPercent(changeMix.refactorRatio)}</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        ${[
+          ['创建', changeMix.createdFiles, 'text-emerald-500'],
+          ['删除', changeMix.deletedFiles, 'text-rose-500'],
+          ['修改', changeMix.modifiedFiles, 'text-amber-500'],
+        ].map(([label, value, color]) => `
+          <div class="bg-white dark:bg-slate-800 rounded-lg p-4 text-center">
+            <div class="text-xs text-slate-400 mb-1">${label}</div>
+            <div class="text-2xl font-bold ${color}">${formatNumber(value)}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function formatPercent(value) {
+    return (value * 100).toFixed(1) + '%';
+  }
+
+  function emptyEngineeringMessage(message) {
+    return `<div class="text-sm text-slate-500 dark:text-slate-400 py-8 text-center">${message}</div>`;
+  }

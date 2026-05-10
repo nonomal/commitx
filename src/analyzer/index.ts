@@ -4,6 +4,7 @@ import { parseGitLog } from './git-log-parser.js';
 import { calculateStats, mergeStats } from './stats-calculator.js';
 import { calculateAdvancedStats } from './advanced/index.js';
 import { calculateTechDebt } from './tech-debt/index.js';
+import { calculateEngineeringMetrics } from './engineering-metrics.js';
 import type { AnalyzeOptions, CommitStats } from '../types/index.js';
 
 /**
@@ -35,9 +36,12 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
 
       // 计算技术债（仅单仓库场景）
       let techDebt;
+      let engineering;
       if (repos.length === 1) {
         spinner.text = `分析技术债 - ${repo.name}`;
         techDebt = await calculateTechDebt(commits, repo.path);
+        spinner.text = `分析工程质量 - ${repo.name}`;
+        engineering = calculateEngineeringMetrics(commits, repo.path);
       }
 
       // 合并核心统计和高级统计
@@ -45,6 +49,7 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
         ...stats,
         ...advancedStats,
         ...(techDebt && { techDebt }),
+        ...(engineering && { engineering }),
       };
       fullStats.commitDetails.forEach((commit) => {
         commit.repoName = repo.name;

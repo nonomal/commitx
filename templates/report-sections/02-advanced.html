@@ -101,6 +101,12 @@
           </svg>
           技术债雷达
         </button>
+        <button class="advanced-tab" data-tab="engineering-quality">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6M4 19h16M5 5h14v10H5z" />
+          </svg>
+          工程质量
+        </button>
         <button class="advanced-tab" data-tab="ai-usage" id="ai-usage-tab" style="display: none;">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -216,6 +222,36 @@
         </div>
       </div>
 
+      <div id="engineering-quality" class="advanced-tab-content hidden fade-in-up">
+        <div id="engineering-empty" class="hidden text-center py-12 text-slate-500 dark:text-slate-400">
+          <p class="text-lg mb-2">工程质量分析</p>
+          <p class="text-sm">此功能仅在单仓库分析时可用</p>
+        </div>
+        <div id="engineering-content">
+          <div id="engineering-score-cards" class="mb-6"></div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">Bug 高发文件 TOP 20</h3>
+              <div id="bug-hot-files-list"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">代码所有权 TOP 20</h3>
+              <div id="code-ownership-list"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">评审参与度</h3>
+              <div id="review-quality-list"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">重构 vs 新增</h3>
+              <div id="change-mix-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- AI Usage Analysis Tab -->
       <div id="ai-usage" class="advanced-tab-content hidden fade-in-up">
         <!-- High AI + High Activity Directories -->
@@ -264,4 +300,3 @@
         </div>
       </div>
     </section>
-

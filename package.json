@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test:build": "tsup src/analyzer/stats-calculator.ts src/analyzer/git-log-parser.ts --format esm --target node18 --outDir .test-dist/analyzer --splitting false --sourcemap false --no-dts",
+    "test:build": "tsup src/analyzer/stats-calculator.ts src/analyzer/git-log-parser.ts src/analyzer/engineering-metrics.ts --format esm --target node18 --outDir .test-dist/analyzer --splitting false --sourcemap false --no-dts",
     "test": "pnpm typecheck && pnpm test:build && node --test tests/*.test.mjs",
     "dev": "tsup --watch",
     "start": "node dist/cli/index.js"
