@@ -1,0 +1,272 @@
+  function setupReportControls() {
+    populateGlobalFilters();
+    applyReportHash();
+
+    const authorFilter = document.getElementById('global-author-filter');
+    const directoryFilter = document.getElementById('global-directory-filter');
+    const resetButton = document.getElementById('global-filter-reset');
+    const jsonButton = document.getElementById('export-json');
+    const csvButton = document.getElementById('export-csv');
+
+    authorFilter?.addEventListener('change', () => {
+      reportState.author = authorFilter.value;
+      applyReportFilters();
+    });
+    directoryFilter?.addEventListener('change', () => {
+      reportState.directory = directoryFilter.value;
+      applyReportFilters();
+    });
+    resetButton?.addEventListener('click', () => {
+      reportState.author = '';
+      reportState.directory = '';
+      if (authorFilter) authorFilter.value = '';
+      if (directoryFilter) directoryFilter.value = '';
+      applyReportFilters();
+    });
+    jsonButton?.addEventListener('click', exportReportJson);
+    csvButton?.addEventListener('click', exportReportCsv);
+
+    reportState.hashReady = true;
+  }
+
+  function populateGlobalFilters() {
+    const authorFilter = document.getElementById('global-author-filter');
+    const directoryFilter = document.getElementById('global-directory-filter');
+    const commits = baseStats.commitDetails || [];
+    if (!authorFilter || !directoryFilter) return;
+
+    const authors = new Map();
+    const directories = new Set();
+    commits.forEach(commit => {
+      const email = String(commit.email || '').toLowerCase();
+      if (email && !authors.has(email)) authors.set(email, `${commit.author} <${commit.email}>`);
+      getCommitFiles(commit).forEach(file => directories.add(getPathDirectory(file.path)));
+    });
+
+    authorFilter.innerHTML = '<option value="">全部作者</option>' +
+      [...authors.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([email, label]) => `<option value="${escapeHtml(email)}">${escapeHtml(label)}</option>`)
+        .join('');
+    directoryFilter.innerHTML = '<option value="">全部目录</option>' +
+      [...directories]
+        .sort((a, b) => a.localeCompare(b))
+        .map(directory => `<option value="${escapeHtml(directory)}">${escapeHtml(directory === '(根目录)' ? '根目录' : directory)}</option>`)
+        .join('');
+  }
+
+  function applyReportHash() {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const author = params.get('author') || '';
+    const directory = params.get('dir') || '';
+    const group = params.get('group') || reportState.advancedGroup;
+    const tab = params.get('tab') || reportState.advancedTab;
+
+    reportState.author = author;
+    reportState.directory = directory;
+    reportState.advancedGroup = group;
+    reportState.advancedTab = tab;
+
+    const authorFilter = document.getElementById('global-author-filter');
+    const directoryFilter = document.getElementById('global-directory-filter');
+    if (authorFilter) authorFilter.value = author;
+    if (directoryFilter) directoryFilter.value = directory;
+    stats = buildFilteredStats();
+  }
+
+  function applyReportFilters() {
+    stats = buildFilteredStats();
+    detailFiltersReady = false;
+    detailCurrentPage = 1;
+    detailExpandedCommits.clear();
+    updateReportHash();
+    renderAll();
+  }
+
+  function updateReportHash() {
+    if (!reportState.hashReady) return;
+
+    const params = new URLSearchParams();
+    if (reportState.advancedGroup) params.set('group', reportState.advancedGroup);
+    if (reportState.advancedTab) params.set('tab', reportState.advancedTab);
+    if (reportState.author) params.set('author', reportState.author);
+    if (reportState.directory) params.set('dir', reportState.directory);
+
+    const nextHash = params.toString();
+    if (window.location.hash.replace(/^#/, '') !== nextHash) {
+      window.history.replaceState(null, '', nextHash ? `#${nextHash}` : window.location.pathname + window.location.search);
+    }
+  }
+
+  function renderGlobalFilterMeta() {
+    const el = document.getElementById('global-filter-meta');
+    if (!el) return;
+
+    const total = baseStats.commitDetails?.length || 0;
+    const current = stats.commitDetails?.length || 0;
+    const active = [];
+    if (reportState.author) active.push('作者');
+    if (reportState.directory) active.push('目录');
+    el.textContent = active.length
+      ? `${active.join(' + ')}筛选：${formatNumber(current)} / ${formatNumber(total)} 次提交`
+      : `全量：${formatNumber(total)} 次提交`;
+  }
+
+  function renderHealthSummary() {
+    const gradeEl = document.getElementById('health-summary-grade');
+    if (!gradeEl) return;
+
+    const result = buildHealthSummary();
+    const gradeColor = result.score >= 80 ? 'text-emerald-500' :
+      result.score >= 60 ? 'text-amber-500' : 'text-rose-500';
+    const highlights = result.highlights.length ? result.highlights : ['当前筛选范围内没有明显异常信号'];
+    const risks = result.risks.length ? result.risks : ['未发现需要立即处理的高风险项'];
+
+    gradeEl.className = `text-5xl font-bold ${gradeColor}`;
+    gradeEl.textContent = result.grade;
+    document.getElementById('health-summary-score').textContent = `${result.score} / 100`;
+    document.getElementById('health-summary-label').textContent = result.label;
+    document.getElementById('health-summary-highlights').innerHTML = highlights
+      .slice(0, 4)
+      .map(item => `<li class="flex gap-2"><span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span><span>${escapeHtml(item)}</span></li>`)
+      .join('');
+    document.getElementById('health-summary-risks').innerHTML = risks
+      .slice(0, 4)
+      .map(item => `<li class="flex gap-2"><span class="mt-1 h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0"></span><span>${escapeHtml(item)}</span></li>`)
+      .join('');
+  }
+
+  function buildHealthSummary() {
+    let score = 100;
+    const highlights = [];
+    const risks = [];
+
+    if (stats.teamHealth) {
+      if (stats.teamHealth.riskLevel === 'high') {
+        score -= 18;
+        risks.push(`Bus Factor 为 ${stats.teamHealth.busFactor}，关键人员依赖偏高`);
+      } else if (stats.teamHealth.riskLevel === 'medium') {
+        score -= 8;
+        risks.push(`Bus Factor 为 ${stats.teamHealth.busFactor}，建议分散关键模块知识`);
+      } else {
+        highlights.push(`Bus Factor 为 ${stats.teamHealth.busFactor}，知识分布相对稳健`);
+      }
+    }
+
+    if (stats.stability) {
+      if (stats.stability.stabilityScore < 60) {
+        score -= 18;
+        risks.push(`稳定性评分 ${stats.stability.stabilityScore.toFixed(0)}，变更反复程度偏高`);
+      } else if (stats.stability.stabilityScore >= 80) {
+        highlights.push(`稳定性评分 ${stats.stability.stabilityScore.toFixed(0)}，代码变更较平稳`);
+      }
+    }
+
+    if (stats.workPressure) {
+      if (stats.workPressure.pressureScore >= 60) {
+        score -= 14;
+        risks.push(`非工作时间提交占比 ${(stats.workPressure.offHoursRate * 100).toFixed(1)}%，交付压力偏高`);
+      } else if (stats.workPressure.pressureScore < 30) {
+        highlights.push('非工作时间提交占比较低，节奏健康');
+      }
+    }
+
+    if (stats.contributorChurn) {
+      if (stats.contributorChurn.churnRate > 0.3) {
+        score -= 12;
+        risks.push(`贡献者流失率 ${(stats.contributorChurn.churnRate * 100).toFixed(1)}%，需要关注交接`);
+      } else if (stats.contributorChurn.retentionRate >= 0.7) {
+        highlights.push(`贡献者留存率 ${(stats.contributorChurn.retentionRate * 100).toFixed(1)}%，团队连续性较好`);
+      }
+    }
+
+    if (stats.quality) {
+      if (stats.quality.churnRate > 0.5) {
+        score -= 10;
+        risks.push(`代码流失率 ${(stats.quality.churnRate * 100).toFixed(1)}%，可能存在反复返工`);
+      }
+      if (stats.quality.avgFilesPerCommit <= 6 && stats.quality.avgLinesPerCommit <= 300) {
+        highlights.push('平均提交尺寸较克制，便于 Review');
+      }
+    }
+
+    const xlBucket = stats.changeSizeDistribution?.buckets?.find(bucket => bucket.label === 'XL');
+    if (xlBucket && xlBucket.count > 0) {
+      score -= Math.min(12, xlBucket.count * 3);
+      risks.push(`存在 ${xlBucket.count} 个 XL 大提交，建议拆分评审`);
+    }
+
+    const aiRisk = stats.aiQualityRisk?.summary?.highAIHighChurn || 0;
+    if (aiRisk > 0) {
+      score -= Math.min(12, aiRisk * 3);
+      risks.push(`${aiRisk} 个文件处于高 AI + 高 Churn 区间，需要加强人审`);
+    }
+
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const grade = score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : 'D';
+    const label = score >= 85 ? '整体健康' : score >= 70 ? '基本稳定' : score >= 55 ? '存在隐患' : '需要治理';
+
+    return { score, grade, label, highlights, risks };
+  }
+
+  function exportReportJson() {
+    downloadTextFile(
+      'commit-report.json',
+      'application/json;charset=utf-8',
+      JSON.stringify({ ...DATA, stats }, null, 2)
+    );
+  }
+
+  function exportReportCsv() {
+    const rows = [
+      ['repo', 'hash', 'author', 'email', 'date', 'message', 'files', 'linesAdded', 'linesDeleted'],
+      ...(stats.commitDetails || []).map(commit => [
+        commit.repoName || '',
+        commit.hash || '',
+        commit.author || '',
+        commit.email || '',
+        new Date(commit.date).toISOString(),
+        commit.message || '',
+        getCommitFiles(commit).map(file => file.path).join(';'),
+        commit.linesAdded || 0,
+        commit.linesDeleted || 0,
+      ]),
+    ];
+
+    downloadTextFile('commit-report.csv', 'text/csv;charset=utf-8', rows.map(row => row.map(csvEscape).join(',')).join('\n'));
+  }
+
+  function csvEscape(value) {
+    const text = String(value ?? '');
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  function downloadTextFile(filename, mimeType, content) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderSingleRepoOnlyEmptyState(title, description = '该分析依赖单仓库的文件历史、blame 或跨文件关系。') {
+    const repoCount = DATA.repos?.length || 0;
+    const hint = repoCount > 1
+      ? `当前报告包含 ${repoCount} 个仓库。请重新选择单个仓库生成报告，必要时用 --depth 缩小扫描范围。`
+      : '请确认目标目录是单个 Git 仓库，并重新生成报告。';
+
+    return `
+      <div class="text-center py-12 text-slate-500 dark:text-slate-400">
+        <p class="text-lg mb-2">${escapeHtml(title)}</p>
+        <p class="text-sm mb-3">${escapeHtml(description)}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500">${escapeHtml(hint)}</p>
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // 渲染入口

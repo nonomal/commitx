@@ -9,6 +9,11 @@ import type {
 } from '../types/index.js';
 import { extname } from 'node:path';
 import { calculateAIMetrics } from './ai-stats-calculator.js';
+import {
+  calculateAIQualityRisk,
+  calculateChangeSizeDistribution,
+  calculateDirectoryCoupling,
+} from './extended-stats.js';
 import { emptyStats } from './stats-empty.js';
 import {
   calculateAuthorFileTypeContributions,
@@ -208,6 +213,9 @@ export function calculateStats(commits: CommitRecord[]): CommitStats {
     authorAIStats: aiStats.authorAIStats,
     directoryAIStats: aiStats.directoryAIStats,
     aiTrends: aiStats.aiTrends,
+    changeSizeDistribution: calculateChangeSizeDistribution(sorted),
+    directoryCoupling: calculateDirectoryCoupling(sorted),
+    aiQualityRisk: calculateAIQualityRisk(sorted),
   };
 }
 

@@ -2,15 +2,12 @@
   // 高级分析 - 协作热度
   // ============================================================
   function renderCollaboration() {
-    const collaboration = DATA.stats.advancedCollaboration;
+    const collaboration = stats.advancedCollaboration;
 
     // 检查数据是否存在
     if (!collaboration) {
       document.getElementById('collaboration').innerHTML =
-        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
-        '<p class="text-lg mb-2">协作热度分析</p>' +
-        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
-        '</div>';
+        renderSingleRepoOnlyEmptyState('协作热度分析');
       return;
     }
 
@@ -174,7 +171,11 @@
   // ============================================================
   function renderTechDebt() {
     const debt = stats.techDebt;
-    if (!debt) return;
+    if (!debt) {
+      document.getElementById('tech-debt').innerHTML =
+        renderSingleRepoOnlyEmptyState('技术债分析');
+      return;
+    }
 
     renderTechDebtRadar('#tech-debt-radar', debt.radar);
     renderDuplicationHeatmap('#duplication-heatmap', debt.duplication);
@@ -186,14 +187,59 @@
   // AI 使用分析
   // ============================================================
   function renderAIUsageAnalysis() {
-    if (!stats.aiMetrics) return;
-
-    // 显示 AI 使用分析 Tab
-    const aiTab = document.getElementById('ai-usage-tab');
-    if (aiTab) aiTab.style.display = 'flex';
-
     renderHighAIDirs();
     renderHighAICommits();
+  }
+
+  function syncAIUsageTabVisibility() {
+    const aiTab = document.getElementById('ai-usage-tab');
+    if (!aiTab) return;
+
+    aiTab.style.display = stats.aiMetrics ? 'flex' : 'none';
+    if (!stats.aiMetrics && reportState.advancedTab === 'ai-usage') {
+      reportState.advancedTab = 'ai-quality';
+      reportState.advancedGroup = 'ai';
+    }
+  }
+
+  function renderAdvancedTab(tabId) {
+    switch (tabId) {
+      case 'team-health':
+        renderTeamHealth();
+        break;
+      case 'stability':
+        renderStability();
+        break;
+      case 'work-pressure':
+        renderWorkPressure();
+        break;
+      case 'contributor-churn':
+        renderContributorChurn();
+        break;
+      case 'collaboration':
+        renderCollaboration();
+        break;
+      case 'tech-debt':
+        renderTechDebt();
+        break;
+      case 'engineering-quality':
+        renderEngineeringMetrics();
+        break;
+      case 'change-size':
+        renderChangeSize();
+        break;
+      case 'dir-coupling':
+        renderDirCoupling();
+        break;
+      case 'ai-quality':
+        renderAIQuality();
+        break;
+      case 'ai-usage':
+        renderAIUsageAnalysis();
+        break;
+      default:
+        renderTeamHealth();
+    }
   }
 
   function renderHighAIDirs() {
@@ -450,35 +496,3 @@
     });
   }
 
-  setupCommitDetailFilters();
-
-  // 启动渲染
-  renderAll();
-
-  // 窗口大小变化时重新渲染
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(renderAll, 300);
-  });
-
-  // 高级分析 Tab 切换
-  document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.advanced-tab');
-    const contents = document.querySelectorAll('.advanced-tab-content');
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', function() {
-        const targetTab = this.dataset.tab;
-
-        // 移除所有 active 类
-        tabs.forEach(t => t.classList.remove('active'));
-        contents.forEach(c => c.classList.add('hidden'));
-
-        // 激活当前 Tab
-        this.classList.add('active');
-        document.getElementById(targetTab).classList.remove('hidden');
-      });
-    });
-  });
-  </script>

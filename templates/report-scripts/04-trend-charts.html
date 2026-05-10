@@ -2,9 +2,12 @@
   // AI 使用趋势图 (双轴折线图)
   // ============================================================
   function renderAITrendChart() {
-    if (!stats.aiTrends || stats.aiTrends.length === 0) return;
-
     const section = document.getElementById('ai-trend-section');
+    if (!stats.aiTrends || stats.aiTrends.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
     section.style.display = 'block';
 
     const container = document.getElementById('ai-trend-chart');

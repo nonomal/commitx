@@ -203,6 +203,88 @@ export interface CommitStats {
   authorAIStats?: AuthorAIStats[];
   directoryAIStats?: DirectoryAIStats[];
   aiTrends?: AITrendPoint[];
+
+  // 扩展维度（可选，多仓库场景为 undefined）
+  changeSizeDistribution?: ChangeSizeDistribution;
+  directoryCoupling?: DirectoryCouplingMetrics;
+  aiQualityRisk?: AIQualityRiskMetrics;
+}
+
+// ============================================================
+// 扩展统计维度
+// ============================================================
+
+/** 变更尺寸分布（按提交行数分桶） */
+export interface ChangeSizeDistribution {
+  buckets: ChangeSizeBucket[];
+  avgChangeSize: number;
+  medianChangeSize: number;
+  p95ChangeSize: number;
+  largeCommits: LargeCommit[]; // TOP 大提交
+}
+
+export interface ChangeSizeBucket {
+  label: 'XS' | 'S' | 'M' | 'L' | 'XL';
+  range: string; // e.g. "<10"
+  count: number;
+  percentage: number;
+}
+
+export interface LargeCommit {
+  hash: string;
+  author: string;
+  date: Date;
+  message: string;
+  totalLines: number;
+  filesCount: number;
+}
+
+/** 目录耦合 */
+export interface DirectoryCouplingMetrics {
+  pairs: DirectoryPair[];      // 跨目录共变 TOP N
+  matrix: DirectoryMatrixCell[]; // 矩阵数据用于热力图
+  directories: string[];        // 矩阵涉及的目录列表
+}
+
+export interface DirectoryPair {
+  dir1: string;
+  dir2: string;
+  coOccurrence: number;
+  coupling: number; // 0~1
+}
+
+export interface DirectoryMatrixCell {
+  dir1: string;
+  dir2: string;
+  value: number;
+}
+
+/** AI × 质量交叉风险 */
+export interface AIQualityRiskMetrics {
+  files: AIQualityRiskFile[]; // 高 AI + 高 churn 的文件 TOP N
+  scatter: AIQualityScatterPoint[]; // 散点图数据
+  summary: {
+    highAIHighChurn: number; // 高风险文件数（AI>50 且 churn>0.5）
+    highAILowChurn: number;
+    lowAIHighChurn: number;
+    lowAILowChurn: number;
+  };
+}
+
+export interface AIQualityRiskFile {
+  path: string;
+  aiScore: number;     // 0~100
+  churnRate: number;   // deleted/added
+  modifyCount: number;
+  totalLines: number;  // added+deleted
+  riskScore: number;   // 综合风险
+}
+
+export interface AIQualityScatterPoint {
+  path: string;
+  aiScore: number;
+  churnRate: number;
+  modifyCount: number;
 }
 
 export type * from './engineering.js';

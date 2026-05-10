@@ -9,13 +9,18 @@ type JsonReportData = Omit<ReportData, 'stats'> & {
 
 const REPORT_SCRIPT_FILES = [
   'report-scripts/01-core.html',
+  'report-scripts/00-filter-state.html',
+  'report-scripts/00-advanced-derived.html',
+  'report-scripts/00-report-controls.html',
   'report-scripts/02-commit-details.html',
   'report-scripts/03-basic-charts.html',
   'report-scripts/04-trend-charts.html',
   'report-scripts/05-tables-team-stability.html',
   'report-scripts/06-pressure-churn.html',
   'report-scripts/08-engineering.html',
+  'report-scripts/09-extensions.html',
   'report-scripts/07-collab-debt-ai.html',
+  'report-scripts/10-runtime.html',
 ];
 
 const REPORT_SECTION_FILES = [
@@ -88,6 +93,15 @@ function serializeStats(stats: CommitStats): Record<string, unknown> {
           dormant: stats.contributorChurn.dormant.map(serializeAuthorDetail),
           lost: stats.contributorChurn.lost.map(serializeAuthorDetail),
           newJoiners: stats.contributorChurn.newJoiners.map(serializeAuthorDetail),
+        }
+      : undefined,
+    changeSizeDistribution: stats.changeSizeDistribution
+      ? {
+          ...stats.changeSizeDistribution,
+          largeCommits: stats.changeSizeDistribution.largeCommits.map((c) => ({
+            ...c,
+            date: c.date.toISOString(),
+          })),
         }
       : undefined,
   };

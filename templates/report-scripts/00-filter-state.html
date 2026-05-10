@@ -1,0 +1,374 @@
+  function getPathDirectory(path) {
+    if (!path) return '(根目录)';
+    const parts = String(path).split('/').filter(Boolean);
+    return parts.length > 1 ? parts[0] : '(根目录)';
+  }
+
+  function getFileExtension(path) {
+    const fileName = String(path || '').split('/').pop() || '';
+    const dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex <= 0 || dotIndex === fileName.length - 1) return '无扩展';
+    return fileName.slice(dotIndex).toLowerCase();
+  }
+
+  function getCommitLines(commit) {
+    return (commit.linesAdded || 0) + (commit.linesDeleted || 0);
+  }
+
+  function getCommitFiles(commit) {
+    return Array.isArray(commit.files) ? commit.files : [];
+  }
+
+  function isReportFiltered() {
+    return Boolean(reportState.author || reportState.directory);
+  }
+
+  function commitMatchesReportFilters(commit) {
+    return Boolean(normalizeFilteredCommit(commit));
+  }
+
+  function getFilteredSourceCommits() {
+    const commits = baseStats.commitDetails || [];
+    if (!isReportFiltered()) return commits;
+    return commits
+      .map(normalizeFilteredCommit)
+      .filter(Boolean);
+  }
+
+  function normalizeFilteredCommit(commit) {
+    const authorMatches = !reportState.author || String(commit.email || '').toLowerCase() === reportState.author;
+    if (!authorMatches) return null;
+
+    if (!reportState.directory) return commit;
+
+    const files = getCommitFiles(commit).filter(file => {
+      const directory = getPathDirectory(file.path);
+      return directory === reportState.directory || String(file.path || '').startsWith(reportState.directory + '/');
+    });
+    if (files.length === 0) return null;
+
+    return {
+      ...commit,
+      files,
+      linesAdded: files.reduce((sum, file) => sum + (file.added || 0), 0),
+      linesDeleted: files.reduce((sum, file) => sum + (file.deleted || 0), 0),
+    };
+  }
+
+  function createTimeAuthorSlot() {
+    return { count: 0, authors: {} };
+  }
+
+  function addTimeAuthor(slot, author) {
+    slot.count++;
+    slot.authors[author] = (slot.authors[author] || 0) + 1;
+  }
+
+  function buildFilteredStats() {
+    if (!isReportFiltered()) return baseStats;
+
+    const commits = getFilteredSourceCommits();
+    const emptyDate = new Date().toISOString();
+    const sortedAsc = [...commits].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedDesc = [...commits].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const totalCommits = commits.length;
+    const linesAdded = commits.reduce((sum, commit) => sum + (commit.linesAdded || 0), 0);
+    const linesDeleted = commits.reduce((sum, commit) => sum + (commit.linesDeleted || 0), 0);
+    const filesChanged = commits.reduce((sum, commit) => sum + getCommitFiles(commit).length, 0);
+    const firstCommitDate = sortedAsc[0]?.date || baseStats.firstCommitDate || emptyDate;
+    const lastCommitDate = sortedDesc[0]?.date || baseStats.lastCommitDate || emptyDate;
+
+    const derived = {
+      ...baseStats,
+      totalCommits,
+      linesAdded,
+      linesDeleted,
+      filesChanged,
+      firstCommitDate,
+      lastCommitDate,
+      busiestDay: deriveBusiestDay(commits),
+      authors: deriveAuthors(commits),
+      fileTypes: deriveFileTypes(commits),
+      directories: deriveDirectories(commits),
+      hourlyDistribution: deriveHourlyDistribution(commits),
+      dailyHeatmap: deriveDailyHeatmap(commits),
+      hourlyByAuthor: deriveHourlyByAuthor(commits),
+      quality: deriveQuality(commits, linesAdded, linesDeleted, filesChanged),
+      timePatterns: deriveTimePatterns(commits),
+      trends: deriveTrends(commits),
+      collaboration: deriveCollaboration(commits),
+      messageStats: deriveMessageStats(commits),
+      authorFileTypeContributions: deriveAuthorFileTypeContributions(commits),
+      commitDetails: sortedAsc,
+    };
+
+    derived.teamHealth = deriveTeamHealth(commits);
+    derived.stability = deriveStability(commits);
+    derived.workPressure = deriveWorkPressure(commits);
+    derived.contributorChurn = deriveContributorChurn(commits);
+    derived.advancedCollaboration = deriveAdvancedCollaboration(commits);
+    derived.changeSizeDistribution = deriveChangeSizeDistribution(commits);
+    derived.directoryCoupling = deriveDirectoryCoupling(commits);
+    derived.engineering = deriveEngineering(commits);
+    derived.techDebt = deriveTechDebt(derived);
+    applyFilteredAIStats(derived, commits);
+
+    return derived;
+  }
+
+  function deriveBusiestDay(commits) {
+    const daily = new Map();
+    commits.forEach(commit => {
+      const key = formatDateKeyLocal(commit.date);
+      daily.set(key, (daily.get(key) || 0) + 1);
+    });
+
+    const [date, count] = [...daily.entries()].sort((a, b) => b[1] - a[1])[0] || ['', 0];
+    return { date, count };
+  }
+
+  function deriveAuthors(commits) {
+    const map = new Map();
+    commits.forEach(commit => {
+      const email = String(commit.email || '').toLowerCase();
+      const current = map.get(email) || {
+        name: commit.author || 'Unknown',
+        email: commit.email || '',
+        commits: 0,
+        linesAdded: 0,
+        linesDeleted: 0,
+        lastActiveDate: commit.date,
+      };
+      current.commits++;
+      current.linesAdded += commit.linesAdded || 0;
+      current.linesDeleted += commit.linesDeleted || 0;
+      if (new Date(commit.date) > new Date(current.lastActiveDate)) current.lastActiveDate = commit.date;
+      map.set(email, current);
+    });
+
+    return [...map.values()].sort((a, b) => b.commits - a.commits);
+  }
+
+  function deriveFileTypes(commits) {
+    const map = new Map();
+    commits.forEach(commit => getCommitFiles(commit).forEach(file => {
+      const extension = getFileExtension(file.path);
+      const current = map.get(extension) || { extension, added: 0, deleted: 0, fileCount: 0 };
+      current.added += file.added || 0;
+      current.deleted += file.deleted || 0;
+      current.fileCount++;
+      map.set(extension, current);
+    }));
+
+    return [...map.values()].sort((a, b) => (b.added + b.deleted) - (a.added + a.deleted));
+  }
+
+  function deriveDirectories(commits) {
+    const map = new Map();
+    commits.forEach(commit => {
+      const seen = new Set();
+      getCommitFiles(commit).forEach(file => {
+        const path = getPathDirectory(file.path);
+        const current = map.get(path) || { path, commits: 0, linesChanged: 0 };
+        current.linesChanged += (file.added || 0) + (file.deleted || 0);
+        if (!seen.has(path)) {
+          current.commits++;
+          seen.add(path);
+        }
+        map.set(path, current);
+      });
+    });
+
+    return [...map.values()].sort((a, b) => b.linesChanged - a.linesChanged);
+  }
+
+  function deriveHourlyDistribution(commits) {
+    const hours = new Array(24).fill(0);
+    commits.forEach(commit => {
+      hours[new Date(commit.date).getHours()]++;
+    });
+    return hours;
+  }
+
+  function deriveHourlyByAuthor(commits) {
+    const hours = Array.from({ length: 24 }, createTimeAuthorSlot);
+    commits.forEach(commit => addTimeAuthor(hours[new Date(commit.date).getHours()], commit.author || 'Unknown'));
+    return hours;
+  }
+
+  function deriveDailyHeatmap(commits) {
+    const daily = {};
+    commits.forEach(commit => {
+      const key = formatDateKeyLocal(commit.date);
+      daily[key] = (daily[key] || 0) + 1;
+    });
+    return daily;
+  }
+
+  function deriveQuality(commits, linesAdded, linesDeleted, filesChanged) {
+    const fileMap = new Map();
+    commits.forEach(commit => getCommitFiles(commit).forEach(file => {
+      const current = fileMap.get(file.path) || { path: file.path, modifyCount: 0, authors: new Set() };
+      current.modifyCount++;
+      current.authors.add(commit.author || 'Unknown');
+      fileMap.set(file.path, current);
+    }));
+
+    return {
+      avgFilesPerCommit: commits.length ? filesChanged / commits.length : 0,
+      avgLinesPerCommit: commits.length ? (linesAdded + linesDeleted) / commits.length : 0,
+      churnRate: linesAdded > 0 ? linesDeleted / linesAdded : 0,
+      hotFiles: [...fileMap.values()]
+        .map(file => ({ ...file, authors: [...file.authors] }))
+        .sort((a, b) => b.modifyCount - a.modifyCount)
+        .slice(0, 10),
+    };
+  }
+
+  function deriveTimePatterns(commits) {
+    const weekdayDistribution = new Array(7).fill(0);
+    const weekdayByAuthor = Array.from({ length: 7 }, createTimeAuthorSlot);
+    const dateSet = new Set();
+    let weekendCommits = 0;
+
+    commits.forEach(commit => {
+      const date = new Date(commit.date);
+      const index = (date.getDay() + 6) % 7;
+      weekdayDistribution[index]++;
+      addTimeAuthor(weekdayByAuthor[index], commit.author || 'Unknown');
+      dateSet.add(formatDateKeyLocal(commit.date));
+      if (index >= 5) weekendCommits++;
+    });
+
+    const days = [...dateSet].sort();
+    let longestStreak = 0;
+    let currentStreak = 0;
+    let previousTime = null;
+    days.forEach(day => {
+      const time = new Date(day).getTime();
+      currentStreak = previousTime !== null && time - previousTime === 86400000 ? currentStreak + 1 : 1;
+      longestStreak = Math.max(longestStreak, currentStreak);
+      previousTime = time;
+    });
+
+    const intervals = [...commits]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(commit => new Date(commit.date).getTime());
+    const avgCommitInterval = intervals.length < 2
+      ? 0
+      : intervals.slice(1).reduce((sum, time, index) => sum + (time - intervals[index]), 0) / (intervals.length - 1);
+
+    return {
+      weekdayDistribution,
+      weekendCommits,
+      avgCommitInterval,
+      longestStreak,
+      currentStreak,
+      weekdayByAuthor,
+    };
+  }
+
+  function getWeekKey(dateValue) {
+    const date = new Date(dateValue);
+    const day = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - day);
+    return formatDateKeyLocal(date);
+  }
+
+  function deriveTrends(commits) {
+    const weekly = new Map();
+    const daily = new Map();
+    [...commits].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(commit => {
+      const week = getWeekKey(commit.date);
+      const currentWeek = weekly.get(week) || { week, commits: 0, linesAdded: 0, linesDeleted: 0 };
+      currentWeek.commits++;
+      currentWeek.linesAdded += commit.linesAdded || 0;
+      currentWeek.linesDeleted += commit.linesDeleted || 0;
+      weekly.set(week, currentWeek);
+
+      const day = formatDateKeyLocal(commit.date);
+      daily.set(day, (daily.get(day) || 0) + (commit.linesAdded || 0) - (commit.linesDeleted || 0));
+    });
+
+    let netLines = 0;
+    const cumulativeLines = [...daily.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, delta]) => {
+      netLines += delta;
+      return { date, netLines };
+    });
+
+    return {
+      weeklyTrend: [...weekly.values()].sort((a, b) => a.week.localeCompare(b.week)),
+      cumulativeLines,
+    };
+  }
+
+  function deriveCollaboration(commits) {
+    const fileAuthors = new Map();
+    const fileCommits = new Map();
+    commits.forEach(commit => getCommitFiles(commit).forEach(file => {
+      if (!fileAuthors.has(file.path)) fileAuthors.set(file.path, new Set());
+      fileAuthors.get(file.path).add(commit.author || 'Unknown');
+      fileCommits.set(file.path, (fileCommits.get(file.path) || 0) + 1);
+    }));
+
+    const soloFiles = [];
+    const collaborationHotspots = [];
+    fileAuthors.forEach((authors, path) => {
+      if (authors.size === 1) {
+        soloFiles.push({ path, author: [...authors][0], commits: fileCommits.get(path) || 0 });
+      } else {
+        collaborationHotspots.push({ path, authorCount: authors.size, totalCommits: fileCommits.get(path) || 0 });
+      }
+    });
+
+    return {
+      soloFiles: soloFiles.sort((a, b) => b.commits - a.commits).slice(0, 20),
+      collaborationHotspots: collaborationHotspots.sort((a, b) => b.authorCount - a.authorCount).slice(0, 20),
+    };
+  }
+
+  function deriveMessageStats(commits) {
+    const typeDistribution = {};
+    let totalLength = 0;
+    commits.forEach(commit => {
+      const message = commit.message || '';
+      const match = message.match(/^([a-zA-Z]+)(\(.+\))?:/);
+      const type = match ? match[1].toLowerCase() : 'other';
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1;
+      totalLength += message.length;
+    });
+
+    return {
+      typeDistribution,
+      avgMessageLength: commits.length ? totalLength / commits.length : 0,
+    };
+  }
+
+  function deriveAuthorFileTypeContributions(commits) {
+    const map = new Map();
+    commits.forEach(commit => getCommitFiles(commit).forEach(file => {
+      const extension = getFileExtension(file.path);
+      const key = `${commit.email || ''}::${extension}`;
+      const current = map.get(key) || {
+        author: commit.author || 'Unknown',
+        email: commit.email || '',
+        extension,
+        linesAdded: 0,
+        linesDeleted: 0,
+        commits: 0,
+        fileCount: 0,
+        commitHashes: new Set(),
+      };
+      current.linesAdded += file.added || 0;
+      current.linesDeleted += file.deleted || 0;
+      current.fileCount++;
+      current.commitHashes.add(commit.hash);
+      current.commits = current.commitHashes.size;
+      map.set(key, current);
+    }));
+
+    return [...map.values()]
+      .map(({ commitHashes, ...item }) => item)
+      .sort((a, b) => b.linesAdded - a.linesAdded);
+  }
+

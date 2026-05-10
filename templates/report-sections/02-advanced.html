@@ -64,54 +64,84 @@
       </div>
 
       <!-- Tab 导航 -->
-      <div class="advanced-tabs-nav mb-6">
-        <button class="advanced-tab active" data-tab="team-health">
+      <div class="advanced-tab-groups mb-3">
+        <button class="advanced-tab-group active" data-tab-group="health">健康</button>
+        <button class="advanced-tab-group" data-tab-group="quality">质量</button>
+        <button class="advanced-tab-group" data-tab-group="collaboration">协作</button>
+        <button class="advanced-tab-group" data-tab-group="ai">AI</button>
+      </div>
+      <div class="advanced-tabs-nav mb-6" data-tab-group-panel="health">
+        <button class="advanced-tab active" data-tab="team-health" data-tab-group="health">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           团队健康度
         </button>
-        <button class="advanced-tab" data-tab="stability">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          代码稳定性
-        </button>
-        <button class="advanced-tab" data-tab="work-pressure">
+        <button class="advanced-tab" data-tab="work-pressure" data-tab-group="health">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           工作压力
         </button>
-        <button class="advanced-tab" data-tab="contributor-churn">
+        <button class="advanced-tab" data-tab="contributor-churn" data-tab-group="health">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           贡献者流失
         </button>
-        <button class="advanced-tab" data-tab="collaboration">
+      </div>
+      <div class="advanced-tabs-nav mb-6 hidden" data-tab-group-panel="quality">
+        <button class="advanced-tab" data-tab="stability" data-tab-group="quality">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          协作热度
+          代码稳定性
         </button>
-        <button class="advanced-tab" data-tab="tech-debt">
+        <button class="advanced-tab" data-tab="tech-debt" data-tab-group="quality">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           技术债雷达
         </button>
-        <button class="advanced-tab" data-tab="engineering-quality">
+        <button class="advanced-tab" data-tab="engineering-quality" data-tab-group="quality">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6M4 19h16M5 5h14v10H5z" />
           </svg>
           工程质量
         </button>
-        <button class="advanced-tab" data-tab="ai-usage" id="ai-usage-tab" style="display: none;">
+        <button class="advanced-tab" data-tab="change-size" data-tab-group="quality">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h2m4 0h6m4 0h2M3 6h18M3 18h18" />
+          </svg>
+          变更尺寸
+        </button>
+        <button class="advanced-tab" data-tab="dir-coupling" data-tab-group="quality">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+          目录耦合
+        </button>
+      </div>
+      <div class="advanced-tabs-nav mb-6 hidden" data-tab-group-panel="collaboration">
+        <button class="advanced-tab" data-tab="collaboration" data-tab-group="collaboration">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          协作热度
+        </button>
+      </div>
+      <div class="advanced-tabs-nav mb-6 hidden" data-tab-group-panel="ai">
+        <button class="advanced-tab" data-tab="ai-quality" data-tab-group="ai">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          AI×质量风险
+        </button>
+        <button class="advanced-tab" data-tab="ai-usage" data-tab-group="ai" id="ai-usage-tab" style="display: none;">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          🤖 AI 使用分析
+          AI 使用分析
         </button>
       </div>
 
@@ -252,12 +282,64 @@
         </div>
       </div>
 
+      <!-- 变更尺寸分布 -->
+      <div id="change-size" class="advanced-tab-content hidden fade-in-up">
+        <div id="change-size-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">提交大小分桶</h3>
+            <div id="change-size-buckets" class="h-[280px]"></div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">大提交 TOP 20</h3>
+            <div id="large-commits-list" class="max-h-[280px] overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 目录耦合 -->
+      <div id="dir-coupling" class="advanced-tab-content hidden fade-in-up">
+        <div id="dir-coupling-empty" class="hidden text-center py-12 text-slate-500 dark:text-slate-400">
+          <p class="text-lg mb-2">目录耦合分析</p>
+          <p class="text-sm">此功能仅在单仓库分析时可用</p>
+        </div>
+        <div id="dir-coupling-content">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">跨目录共变热力矩阵</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">单元格：两目录在同一提交中共同改动的次数</p>
+              <div id="dir-coupling-matrix"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+              <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">高耦合目录对 TOP 20</h3>
+              <div id="dir-coupling-list" class="max-h-[400px] overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI × 质量风险 -->
+      <div id="ai-quality" class="advanced-tab-content hidden fade-in-up">
+        <div id="ai-quality-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">AI × Churn 散点图</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">右上角红色区域 = 高 AI + 高流失（强烈建议人审）</p>
+            <div id="ai-quality-scatter" class="h-[400px]"></div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-200">高风险文件 TOP 20</h3>
+            <div id="ai-quality-files" class="max-h-[400px] overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- AI Usage Analysis Tab -->
       <div id="ai-usage" class="advanced-tab-content hidden fade-in-up">
         <!-- High AI + High Activity Directories -->
         <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 mb-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">⚠️ 高 AI + 高活跃目录</h3>
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">高 AI + 高活跃目录</h3>
             <span class="text-xs text-slate-500 dark:text-slate-400">建议加强 Code Review 和测试覆盖</span>
           </div>
           <div class="overflow-x-auto">
@@ -279,7 +361,7 @@
         <!-- High AI Commits Leaderboard -->
         <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">🤖 高 AI 提交榜单 TOP 20</h3>
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">高 AI 提交榜单 TOP 20</h3>
             <span class="text-xs text-slate-500 dark:text-slate-400">AI 评分 > 50 的提交</span>
           </div>
           <div class="overflow-x-auto">

@@ -118,15 +118,12 @@
   // 高级分析 - 团队健康度
   // ============================================================
   function renderTeamHealth() {
-    const teamHealth = DATA.stats.teamHealth;
+    const teamHealth = stats.teamHealth;
 
     // 检查数据是否存在
     if (!teamHealth) {
       document.getElementById('team-health').innerHTML =
-        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
-        '<p class="text-lg mb-2">团队健康度分析</p>' +
-        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
-        '</div>';
+        renderSingleRepoOnlyEmptyState('团队健康度分析');
       return;
     }
 
@@ -254,15 +251,12 @@
   // 高级分析 - 代码稳定性
   // ============================================================
   function renderStability() {
-    const stability = DATA.stats.stability;
+    const stability = stats.stability;
 
     // 检查数据是否存在
     if (!stability) {
       document.getElementById('stability').innerHTML =
-        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
-        '<p class="text-lg mb-2">代码稳定性分析</p>' +
-        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
-        '</div>';
+        renderSingleRepoOnlyEmptyState('代码稳定性分析');
       return;
     }
 

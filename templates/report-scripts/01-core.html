@@ -2,13 +2,21 @@
   // ============================================================
   // 初始化
   // ============================================================
-  const stats = DATA.stats;
+  const baseStats = DATA.stats;
+  let stats = baseStats;
   const tooltip = document.getElementById('tooltip');
   const isDark = () => document.documentElement.classList.contains('dark');
   const DETAIL_PAGE_SIZE = 100;
   let detailFiltersReady = false;
   let detailCurrentPage = 1;
   const detailExpandedCommits = new Set();
+  const reportState = {
+    author: '',
+    directory: '',
+    advancedGroup: 'health',
+    advancedTab: 'team-health',
+    hashReady: false,
+  };
 
   // 主题切换
   document.getElementById('theme-toggle').addEventListener('click', () => {
@@ -54,6 +62,7 @@
     }[char]));
   }
 
+
   function showTooltip(event, text) {
     tooltip.style.opacity = 1;
     tooltip.innerHTML = text;
@@ -63,10 +72,10 @@
   function hideTooltip() { tooltip.style.opacity = 0; }
 
   // ============================================================
-  // 渲染入口
-  // ============================================================
   function renderAll() {
     renderSummary();
+    renderGlobalFilterMeta();
+    renderHealthSummary();
     renderQualityCards();
     renderAICard();
     renderHeatmap();
@@ -85,15 +94,9 @@
     renderAuthorFileTypeTable();
     renderExtraStats();
 
-    // 渲染高级分析模块
-    renderTeamHealth();
-    renderStability();
-    renderWorkPressure();
-    renderContributorChurn();
-    renderCollaboration();
-    renderEngineeringMetrics();
-    renderTechDebt();
-    renderAIUsageAnalysis();
+    // 渲染当前可见的高级分析模块，避免隐藏图表宽度为 0。
+    syncAIUsageTabVisibility();
+    renderAdvancedTab(reportState.advancedTab);
   }
 
   // ============================================================
@@ -126,9 +129,12 @@
   // AI 使用统计卡片
   // ============================================================
   function renderAICard() {
-    if (!stats.aiMetrics) return;
-
     const card = document.getElementById('ai-usage-card');
+    if (!stats.aiMetrics) {
+      card.style.display = 'none';
+      return;
+    }
+
     card.style.display = 'grid';
 
     document.getElementById('card-ai-percentage').textContent = stats.aiMetrics.aiPercentage.toFixed(1) + '%';

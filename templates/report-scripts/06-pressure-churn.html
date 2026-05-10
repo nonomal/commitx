@@ -2,15 +2,12 @@
   // 高级分析 - 工作压力
   // ============================================================
   function renderWorkPressure() {
-    const workPressure = DATA.stats.workPressure;
+    const workPressure = stats.workPressure;
 
     // 检查数据是否存在
     if (!workPressure) {
       document.getElementById('work-pressure').innerHTML =
-        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
-        '<p class="text-lg mb-2">工作压力分析</p>' +
-        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
-        '</div>';
+        renderSingleRepoOnlyEmptyState('工作压力分析');
       return;
     }
 
@@ -101,7 +98,7 @@
   function renderOffHoursBreakdown(lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits) {
     const container = document.getElementById('off-hours-breakdown');
 
-    const total = DATA.stats.totalCommits || 1;
+    const total = stats.totalCommits || 1;
     const normalCommits = total - lateNightCommits - earlyMorningCommits - weekendCommits - holidayCommits.reduce((sum, h) => sum + h.commits, 0);
 
     const data = [
@@ -164,15 +161,12 @@
   // 高级分析 - 贡献者流失
   // ============================================================
   function renderContributorChurn() {
-    const contributorChurn = DATA.stats.contributorChurn;
+    const contributorChurn = stats.contributorChurn;
 
     // 检查数据是否存在
     if (!contributorChurn) {
       document.getElementById('contributor-churn').innerHTML =
-        '<div class="text-center py-12 text-slate-500 dark:text-slate-400">' +
-        '<p class="text-lg mb-2">贡献者流失分析</p>' +
-        '<p class="text-sm">此功能仅在单仓库分析时可用</p>' +
-        '</div>';
+        renderSingleRepoOnlyEmptyState('贡献者流失分析');
       return;
     }
 

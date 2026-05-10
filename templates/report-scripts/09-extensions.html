@@ -1,0 +1,305 @@
+  // ============================================================
+  // 扩展统计 - 渲染入口
+  // ============================================================
+  function renderExtensions() {
+    renderChangeSize();
+    renderDirCoupling();
+    renderAIQuality();
+  }
+
+  // ============================================================
+  // #2 变更尺寸分布
+  // ============================================================
+  function renderChangeSize() {
+    const data = stats.changeSizeDistribution;
+    const summaryEl = document.getElementById('change-size-summary');
+    if (!data || data.buckets.every(b => b.count === 0)) {
+      summaryEl.innerHTML = '<div class="col-span-4">' + renderSingleRepoOnlyEmptyState('变更尺寸分析', '未发现可用于分桶的提交变更数据。') + '</div>';
+      return;
+    }
+
+    // 概要卡片
+    const card = (label, value, desc, color) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700/50">
+        <div class="text-sm text-slate-500 dark:text-slate-400 font-medium mb-2">${label}</div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+        <div class="text-xs text-slate-400 mt-1">${desc}</div>
+      </div>
+    `;
+    summaryEl.innerHTML =
+      card('平均行数', Math.round(data.avgChangeSize), '每次提交', 'text-primary-500') +
+      card('中位数', data.medianChangeSize, '50% 提交 ≤ 此值', 'text-emerald-500') +
+      card('P95', data.p95ChangeSize, '95% 提交 ≤ 此值', 'text-amber-500') +
+      card('XL 大提交', data.buckets.find(b => b.label === 'XL').count,
+           '≥1000 行（评审难）', 'text-rose-500');
+
+    // 分桶柱状图
+    const container = document.getElementById('change-size-buckets');
+    container.innerHTML = '';
+    const w = container.clientWidth || 400;
+    const h = 280;
+    const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+    const innerW = w - margin.left - margin.right;
+    const innerH = h - margin.top - margin.bottom;
+
+    const svg = d3.select(container).append('svg').attr('width', w).attr('height', h);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().domain(data.buckets.map(b => b.label)).range([0, innerW]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(data.buckets, b => b.count) || 1]).nice().range([innerH, 0]);
+
+    const colorMap = { XS: '#10b981', S: '#22c55e', M: '#0ea5e9', L: '#f59e0b', XL: '#ef4444' };
+
+    g.append('g').attr('transform', `translate(0,${innerH})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .style('font-size', '11px')
+      .style('fill', isDark() ? '#cbd5e1' : '#475569');
+    g.append('g').call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').style('fill', isDark() ? '#cbd5e1' : '#475569');
+
+    g.selectAll('.bar').data(data.buckets).enter().append('rect')
+      .attr('x', d => x(d.label))
+      .attr('y', d => y(d.count))
+      .attr('width', x.bandwidth())
+      .attr('height', d => innerH - y(d.count))
+      .attr('rx', 4)
+      .attr('fill', d => colorMap[d.label])
+      .on('mouseover', (e, d) =>
+        showTooltip(e, `<b>${d.label}</b> (${d.range} 行)<br/>${d.count} 次提交 (${d.percentage.toFixed(1)}%)`)
+      )
+      .on('mouseout', hideTooltip);
+
+    // 数值标签
+    g.selectAll('.label').data(data.buckets).enter().append('text')
+      .attr('x', d => x(d.label) + x.bandwidth() / 2)
+      .attr('y', d => y(d.count) - 6)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '11px')
+      .attr('fill', isDark() ? '#e2e8f0' : '#475569')
+      .text(d => d.percentage.toFixed(0) + '%');
+
+    // 大提交列表
+    const listEl = document.getElementById('large-commits-list');
+    if (!data.largeCommits.length) {
+      listEl.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无大提交</p>';
+      return;
+    }
+    listEl.innerHTML = data.largeCommits.map(c => `
+      <div class="py-2 border-b border-slate-200 dark:border-slate-700 last:border-0">
+        <div class="flex items-center justify-between gap-2">
+          <code class="text-xs text-primary-500">${c.hash.slice(0, 7)}</code>
+          <span class="text-rose-500 font-semibold text-sm">${formatNumber(c.totalLines)} 行</span>
+        </div>
+        <div class="text-sm text-slate-700 dark:text-slate-200 truncate" title="${escapeHtml(c.message)}">${escapeHtml(c.message)}</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          ${escapeHtml(c.author)} · ${c.filesCount} 文件 · ${formatDateKeyLocal(c.date)}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ============================================================
+  // #6 目录耦合
+  // ============================================================
+  function renderDirCoupling() {
+    const data = stats.directoryCoupling;
+    const emptyEl = document.getElementById('dir-coupling-empty');
+    const contentEl = document.getElementById('dir-coupling-content');
+
+    if (!data || !data.directories.length) {
+      emptyEl.innerHTML = renderSingleRepoOnlyEmptyState('目录耦合分析');
+      emptyEl.classList.remove('hidden');
+      contentEl.classList.add('hidden');
+      return;
+    }
+
+    // 矩阵热力图
+    const matrixEl = document.getElementById('dir-coupling-matrix');
+    matrixEl.innerHTML = '';
+    const dirs = data.directories;
+    const cellSize = Math.min(36, Math.floor(360 / dirs.length));
+    const labelW = 100;
+    const labelH = 100;
+    const w = labelW + dirs.length * cellSize + 20;
+    const h = labelH + dirs.length * cellSize + 20;
+
+    const svg = d3.select(matrixEl).append('svg').attr('width', w).attr('height', h);
+
+    const maxOff = d3.max(data.matrix.filter(c => c.dir1 !== c.dir2), c => c.value) || 1;
+    const colorScale = d3.scaleSequential(d3.interpolateOranges).domain([0, maxOff]);
+    const truncate = (s) => s.length > 12 ? s.slice(0, 11) + '…' : s;
+
+    // 顶部标签
+    dirs.forEach((d, i) => {
+      svg.append('text')
+        .attr('x', labelW + i * cellSize + cellSize / 2)
+        .attr('y', labelH - 6)
+        .attr('text-anchor', 'start')
+        .attr('transform', `rotate(-45 ${labelW + i * cellSize + cellSize / 2} ${labelH - 6})`)
+        .attr('font-size', '11px')
+        .attr('fill', isDark() ? '#cbd5e1' : '#475569')
+        .text(truncate(d));
+    });
+    // 左侧标签
+    dirs.forEach((d, i) => {
+      svg.append('text')
+        .attr('x', labelW - 6)
+        .attr('y', labelH + i * cellSize + cellSize / 2 + 4)
+        .attr('text-anchor', 'end')
+        .attr('font-size', '11px')
+        .attr('fill', isDark() ? '#cbd5e1' : '#475569')
+        .text(truncate(d));
+    });
+
+    // 单元格
+    data.matrix.forEach(cell => {
+      const i = dirs.indexOf(cell.dir1);
+      const j = dirs.indexOf(cell.dir2);
+      if (i < 0 || j < 0) return;
+      const isDiag = cell.dir1 === cell.dir2;
+      svg.append('rect')
+        .attr('x', labelW + j * cellSize + 1)
+        .attr('y', labelH + i * cellSize + 1)
+        .attr('width', cellSize - 2)
+        .attr('height', cellSize - 2)
+        .attr('rx', 2)
+        .attr('fill', isDiag ? (isDark() ? '#334155' : '#e2e8f0') : (cell.value > 0 ? colorScale(cell.value) : (isDark() ? '#1e293b' : '#f1f5f9')))
+        .on('mouseover', (e) => showTooltip(e,
+          isDiag
+            ? `<b>${escapeHtml(cell.dir1)}</b><br/>共 ${cell.value} 次提交`
+            : `<b>${escapeHtml(cell.dir1)}</b> ↔ <b>${escapeHtml(cell.dir2)}</b><br/>共变 ${cell.value} 次`
+        ))
+        .on('mouseout', hideTooltip);
+    });
+
+    // 列表
+    const listEl = document.getElementById('dir-coupling-list');
+    if (!data.pairs.length) {
+      listEl.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无跨目录耦合</p>';
+      return;
+    }
+    listEl.innerHTML = '<table class="w-full text-sm">' +
+      '<thead><tr class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">' +
+      '<th class="pb-2">目录对</th><th class="pb-2 text-right">共变</th><th class="pb-2 text-right">耦合度</th></tr></thead><tbody>' +
+      data.pairs.slice(0, 20).map(p => {
+        const couplingPct = (p.coupling * 100).toFixed(0);
+        const color = p.coupling > 0.5 ? 'text-rose-500' : p.coupling > 0.3 ? 'text-amber-500' : 'text-emerald-500';
+        return `<tr class="border-b border-slate-100 dark:border-slate-700/50">
+          <td class="py-2"><code class="text-xs">${escapeHtml(p.dir1)}</code> ↔ <code class="text-xs">${escapeHtml(p.dir2)}</code></td>
+          <td class="py-2 text-right">${p.coOccurrence}</td>
+          <td class="py-2 text-right font-semibold ${color}">${couplingPct}%</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  }
+
+  // ============================================================
+  // #18 AI × 质量交叉风险
+  // ============================================================
+  function renderAIQuality() {
+    const data = stats.aiQualityRisk;
+    const summaryEl = document.getElementById('ai-quality-summary');
+    if (!data || !data.scatter.length) {
+      summaryEl.innerHTML = '<div class="col-span-4">' + renderSingleRepoOnlyEmptyState('AI × 质量风险分析', '当前范围内没有可交叉分析的 AI 与质量风险数据。') + '</div>';
+      return;
+    }
+
+    const s = data.summary;
+    const card = (label, value, color, desc) => `
+      <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700/50">
+        <div class="text-sm text-slate-500 dark:text-slate-400 font-medium mb-2">${label}</div>
+        <div class="text-2xl font-bold ${color}">${value}</div>
+        <div class="text-xs text-slate-400 mt-1">${desc}</div>
+      </div>
+    `;
+    summaryEl.innerHTML =
+      card('高 AI + 高 Churn', s.highAIHighChurn, 'text-rose-500', '强烈建议人审') +
+      card('高 AI + 低 Churn', s.highAILowChurn, 'text-amber-500', '可能稳定') +
+      card('低 AI + 高 Churn', s.lowAIHighChurn, 'text-orange-500', '人写但反复重写') +
+      card('低风险文件', s.lowAILowChurn, 'text-emerald-500', '健康代码');
+
+    // 散点图
+    const container = document.getElementById('ai-quality-scatter');
+    container.innerHTML = '';
+    const w = container.clientWidth || 400;
+    const h = 400;
+    const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+    const innerW = w - margin.left - margin.right;
+    const innerH = h - margin.top - margin.bottom;
+
+    const svg = d3.select(container).append('svg').attr('width', w).attr('height', h);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear().domain([0, 100]).range([0, innerW]);
+    const y = d3.scaleLinear().domain([0, Math.min(2, (d3.max(data.scatter, p => p.churnRate) || 1) * 1.1)]).range([innerH, 0]);
+    const r = d3.scaleSqrt().domain([1, d3.max(data.scatter, p => p.modifyCount) || 1]).range([3, 12]);
+
+    // 高风险象限背景
+    g.append('rect')
+      .attr('x', x(50)).attr('y', y(2))
+      .attr('width', innerW - x(50)).attr('height', innerH - y(0.5) - (y(2) - y(0.5)))
+      .attr('fill', 'rgba(239,68,68,0.08)');
+
+    // 坐标轴
+    g.append('g').attr('transform', `translate(0,${innerH})`)
+      .call(d3.axisBottom(x).ticks(5).tickFormat(d => d + '%'))
+      .selectAll('text').style('fill', isDark() ? '#cbd5e1' : '#475569');
+    g.append('text')
+      .attr('x', innerW / 2).attr('y', innerH + 38)
+      .attr('text-anchor', 'middle').attr('font-size', '12px')
+      .attr('fill', isDark() ? '#cbd5e1' : '#475569')
+      .text('AI 评分 (%)');
+
+    g.append('g').call(d3.axisLeft(y).ticks(5))
+      .selectAll('text').style('fill', isDark() ? '#cbd5e1' : '#475569');
+    g.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -innerH / 2).attr('y', -36)
+      .attr('text-anchor', 'middle').attr('font-size', '12px')
+      .attr('fill', isDark() ? '#cbd5e1' : '#475569')
+      .text('Churn Rate (deleted/added)');
+
+    // 参考线
+    g.append('line')
+      .attr('x1', x(50)).attr('x2', x(50))
+      .attr('y1', 0).attr('y2', innerH)
+      .attr('stroke', isDark() ? '#475569' : '#cbd5e1').attr('stroke-dasharray', '3 3');
+    g.append('line')
+      .attr('x1', 0).attr('x2', innerW)
+      .attr('y1', y(0.5)).attr('y2', y(0.5))
+      .attr('stroke', isDark() ? '#475569' : '#cbd5e1').attr('stroke-dasharray', '3 3');
+
+    // 散点
+    g.selectAll('.dot').data(data.scatter).enter().append('circle')
+      .attr('cx', d => x(d.aiScore))
+      .attr('cy', d => y(Math.min(d.churnRate, 2)))
+      .attr('r', d => r(d.modifyCount))
+      .attr('fill', d => {
+        const high = d.aiScore > 50 && d.churnRate > 0.5;
+        return high ? 'rgba(239,68,68,0.7)' : 'rgba(14,165,233,0.5)';
+      })
+      .attr('stroke', d => d.aiScore > 50 && d.churnRate > 0.5 ? '#dc2626' : '#0284c7')
+      .attr('stroke-width', 1)
+      .on('mouseover', (e, d) => showTooltip(e,
+        `<b>${escapeHtml(d.path)}</b><br/>AI: ${d.aiScore.toFixed(0)}% · Churn: ${d.churnRate.toFixed(2)} · 修改 ${d.modifyCount} 次`
+      ))
+      .on('mouseout', hideTooltip);
+
+    // 文件列表
+    const listEl = document.getElementById('ai-quality-files');
+    if (!data.files.length) {
+      listEl.innerHTML = '<p class="text-sm text-slate-500 dark:text-slate-400">无高风险文件</p>';
+      return;
+    }
+    listEl.innerHTML = '<table class="w-full text-sm">' +
+      '<thead><tr class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">' +
+      '<th class="pb-2">文件</th><th class="pb-2 text-right">AI</th><th class="pb-2 text-right">Churn</th><th class="pb-2 text-right">修改</th></tr></thead><tbody>' +
+      data.files.map(f => `
+        <tr class="border-b border-slate-100 dark:border-slate-700/50">
+          <td class="py-2"><code class="text-xs" title="${escapeHtml(f.path)}">${escapeHtml(f.path.length > 36 ? '…' + f.path.slice(-35) : f.path)}</code></td>
+          <td class="py-2 text-right ${f.aiScore > 50 ? 'text-rose-500 font-semibold' : 'text-slate-600 dark:text-slate-300'}">${f.aiScore.toFixed(0)}%</td>
+          <td class="py-2 text-right ${f.churnRate > 0.5 ? 'text-rose-500 font-semibold' : 'text-slate-600 dark:text-slate-300'}">${f.churnRate.toFixed(2)}</td>
+          <td class="py-2 text-right text-slate-600 dark:text-slate-300">${f.modifyCount}</td>
+        </tr>
+      `).join('') + '</tbody></table>';
+  }

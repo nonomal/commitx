@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>commit-report</title>
+  <link rel="icon" href="data:," />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
@@ -36,6 +37,7 @@
     }
     .dark .chart-tooltip { background: rgba(255,255,255,0.9); color: #1e293b; }
     /* 高级分析 Tab 样式 - 优化版 (Pill Style) */
+    .advanced-tab-groups,
     .advanced-tabs-nav {
       display: flex;
       gap: 0.5rem;
@@ -45,11 +47,47 @@
       overflow-x: auto;
       scrollbar-width: none; /* Firefox */
     }
+    .advanced-tab-groups::-webkit-scrollbar,
     .advanced-tabs-nav::-webkit-scrollbar {
       display: none; /* Chrome/Safari */
     }
+    .dark .advanced-tab-groups,
     .dark .advanced-tabs-nav {
       background: #1e293b;
+    }
+    .advanced-tab-group {
+      padding: 0.625rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: #64748b;
+      transition: all 0.2s;
+      white-space: nowrap;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      flex-shrink: 0;
+    }
+    .dark .advanced-tab-group {
+      color: #94a3b8;
+    }
+    .advanced-tab-group:hover {
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.5);
+    }
+    .dark .advanced-tab-group:hover {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .advanced-tab-group.active {
+      background: #0f172a;
+      color: #fff;
+      box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.15);
+    }
+    .dark .advanced-tab-group.active {
+      background: #e2e8f0;
+      color: #0f172a;
+      box-shadow: none;
     }
     .advanced-tab {
       display: flex;

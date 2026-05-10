@@ -1,0 +1,54 @@
+  setupCommitDetailFilters();
+  setupReportControls();
+
+  // 启动渲染
+  renderAll();
+
+  // 窗口大小变化时重新渲染
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderAll, 300);
+  });
+
+  function activateAdvancedGroup(group) {
+    const groups = document.querySelectorAll('.advanced-tab-group');
+    const panels = document.querySelectorAll('[data-tab-group-panel]');
+
+    groups.forEach(item => item.classList.toggle('active', item.dataset.tabGroup === group));
+    panels.forEach(panel => panel.classList.toggle('hidden', panel.dataset.tabGroupPanel !== group));
+    reportState.advancedGroup = group;
+  }
+
+  function activateAdvancedTab(tabId, shouldUpdateHash = true) {
+    const tab = document.querySelector(`.advanced-tab[data-tab="${tabId}"]`);
+    const target = document.getElementById(tabId);
+    if (!tab || !target) return;
+
+    const group = tab.dataset.tabGroup || 'health';
+    activateAdvancedGroup(group);
+
+    document.querySelectorAll('.advanced-tab').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.advanced-tab-content').forEach(content => content.classList.add('hidden'));
+
+    tab.classList.add('active');
+    target.classList.remove('hidden');
+    reportState.advancedTab = tabId;
+    renderAdvancedTab(tabId);
+    if (shouldUpdateHash) updateReportHash();
+  }
+
+  document.querySelectorAll('.advanced-tab-group').forEach(group => {
+    group.addEventListener('click', () => {
+      const targetGroup = group.dataset.tabGroup;
+      const firstVisibleTab = document.querySelector(`.advanced-tab[data-tab-group="${targetGroup}"]:not([style*="display: none"])`);
+      if (firstVisibleTab) activateAdvancedTab(firstVisibleTab.dataset.tab);
+    });
+  });
+
+  document.querySelectorAll('.advanced-tab').forEach(tab => {
+    tab.addEventListener('click', () => activateAdvancedTab(tab.dataset.tab));
+  });
+
+  activateAdvancedTab(reportState.advancedTab, false);
+  </script>

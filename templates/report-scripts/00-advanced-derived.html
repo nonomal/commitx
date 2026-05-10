@@ -1,0 +1,459 @@
+  function deriveTeamHealth(commits) {
+    if (commits.length === 0) return undefined;
+
+    const fileAuthors = new Map();
+    commits.forEach(commit => getCommitFiles(commit).forEach(file => {
+      if (!fileAuthors.has(file.path)) fileAuthors.set(file.path, new Map());
+      const authors = fileAuthors.get(file.path);
+      const key = String(commit.email || commit.author || 'unknown').toLowerCase();
+      const current = authors.get(key) || { name: commit.author || 'Unknown', email: commit.email || '', commits: 0 };
+      current.commits++;
+      authors.set(key, current);
+    }));
+
+    const authorScores = new Map();
+    fileAuthors.forEach((authors, path) => {
+      const ranked = [...authors.values()].sort((a, b) => b.commits - a.commits);
+      const total = ranked.reduce((sum, item) => sum + item.commits, 0) || 1;
+      const dominant = ranked[0];
+      const scoreItem = authorScores.get(dominant.email.toLowerCase()) || {
+        name: dominant.name,
+        email: dominant.email,
+        uniqueFiles: [],
+        dominantFiles: [],
+        knowledgeScore: 0,
+      };
+
+      if (ranked.length === 1) scoreItem.uniqueFiles.push(path);
+      if (dominant.commits / total >= 0.6) scoreItem.dominantFiles.push(path);
+      scoreItem.knowledgeScore += ranked.length === 1 ? 2 : dominant.commits / total;
+      authorScores.set(dominant.email.toLowerCase(), scoreItem);
+    });
+
+    const criticalAuthors = [...authorScores.values()]
+      .sort((a, b) => b.knowledgeScore - a.knowledgeScore)
+      .slice(0, 10);
+    const totalScore = criticalAuthors.reduce((sum, item) => sum + item.knowledgeScore, 0) || 1;
+    let covered = 0;
+    let busFactor = 0;
+    for (const author of criticalAuthors) {
+      covered += author.knowledgeScore;
+      busFactor++;
+      if (covered / totalScore >= 0.5) break;
+    }
+    const topShare = criticalAuthors[0] ? criticalAuthors[0].knowledgeScore / totalScore : 0;
+    const riskLevel = busFactor <= 1 ? 'high' : busFactor === 2 ? 'medium' : 'low';
+
+    return {
+      busFactor,
+      criticalAuthors,
+      knowledgeDistribution: Math.max(0, Math.min(1, 1 - topShare)),
+      riskLevel,
+    };
+  }
+
+  function deriveStability(commits) {
+    if (commits.length === 0) return undefined;
+
+    const files = new Map();
+    const directories = new Map();
+    let revertCommits = 0;
+    let fixCommits = 0;
+
+    commits.forEach(commit => {
+      const message = commit.message || '';
+      if (/revert/i.test(message)) revertCommits++;
+      if (/^(fix|bugfix|hotfix)(\(.+\))?:|fix|bug/i.test(message)) fixCommits++;
+
+      getCommitFiles(commit).forEach(file => {
+        const current = files.get(file.path) || { path: file.path, added: 0, deleted: 0, modifyCount: 0 };
+        current.added += file.added || 0;
+        current.deleted += file.deleted || 0;
+        current.modifyCount++;
+        files.set(file.path, current);
+
+        const dir = getPathDirectory(file.path);
+        const currentDir = directories.get(dir) || { path: dir, added: 0, deleted: 0, totalChanges: 0, files: new Set() };
+        currentDir.added += file.added || 0;
+        currentDir.deleted += file.deleted || 0;
+        currentDir.totalChanges += (file.added || 0) + (file.deleted || 0);
+        currentDir.files.add(file.path);
+        directories.set(dir, currentDir);
+      });
+    });
+
+    const fileChurnRate = [...files.values()].map(file => {
+      const churnRate = file.added > 0 ? file.deleted / file.added : file.deleted > 0 ? 1 : 0;
+      return {
+        ...file,
+        churnRate,
+        isUnstable: churnRate > 0.5 && file.modifyCount >= 3,
+      };
+    }).sort((a, b) => (b.churnRate * b.modifyCount) - (a.churnRate * a.modifyCount));
+
+    const directoryChurnRate = [...directories.values()].map(dir => ({
+      path: dir.path,
+      churnRate: dir.added > 0 ? dir.deleted / dir.added : dir.deleted > 0 ? 1 : 0,
+      totalChanges: dir.totalChanges,
+      fileCount: dir.files.size,
+    })).sort((a, b) => b.churnRate - a.churnRate);
+
+    const revertRate = revertCommits / commits.length;
+    const fixCommitRate = fixCommits / commits.length;
+    const unstableRate = fileChurnRate.length
+      ? fileChurnRate.filter(file => file.isUnstable).length / fileChurnRate.length
+      : 0;
+    const stabilityScore = Math.max(0, Math.round(100 - revertRate * 40 - fixCommitRate * 20 - unstableRate * 40));
+
+    return { fileChurnRate, directoryChurnRate, revertRate, fixCommitRate, stabilityScore };
+  }
+
+  function deriveWorkPressure(commits) {
+    if (commits.length === 0) return undefined;
+
+    let lateNightCommits = 0;
+    let earlyMorningCommits = 0;
+    let weekendCommits = 0;
+    commits.forEach(commit => {
+      const date = new Date(commit.date);
+      const hour = date.getHours();
+      const day = date.getDay();
+      if (hour >= 23 || hour < 2) lateNightCommits++;
+      if (hour >= 2 && hour < 6) earlyMorningCommits++;
+      if (day === 0 || day === 6) weekendCommits++;
+    });
+
+    const offHours = lateNightCommits + earlyMorningCommits + weekendCommits;
+    const offHoursRate = offHours / commits.length;
+    const pressureScore = Math.min(100, Math.round(offHoursRate * 100));
+    return { lateNightCommits, earlyMorningCommits, weekendCommits, holidayCommits: [], pressureScore, offHoursRate };
+  }
+
+  function deriveContributorChurn(commits) {
+    if (commits.length === 0) return undefined;
+
+    const authors = new Map();
+    commits.forEach(commit => {
+      const key = String(commit.email || commit.author || 'unknown').toLowerCase();
+      const current = authors.get(key) || {
+        name: commit.author || 'Unknown',
+        email: commit.email || '',
+        firstCommitDate: commit.date,
+        lastCommitDate: commit.date,
+        totalCommits: 0,
+      };
+      current.totalCommits++;
+      if (new Date(commit.date) < new Date(current.firstCommitDate)) current.firstCommitDate = commit.date;
+      if (new Date(commit.date) > new Date(current.lastCommitDate)) current.lastCommitDate = commit.date;
+      authors.set(key, current);
+    });
+
+    const lastDate = Math.max(...commits.map(commit => new Date(commit.date).getTime()));
+    const active = [];
+    const occasional = [];
+    const dormant = [];
+    const lost = [];
+    const newJoiners = [];
+
+    authors.forEach(author => {
+      const daysSinceLastCommit = Math.floor((lastDate - new Date(author.lastCommitDate).getTime()) / 86400000);
+      const detail = { ...author, daysSinceLastCommit };
+      delete detail.firstCommitDate;
+      if (daysSinceLastCommit < 30) active.push(detail);
+      else if (daysSinceLastCommit < 90) occasional.push(detail);
+      else if (daysSinceLastCommit < 180) dormant.push(detail);
+      else lost.push(detail);
+      if (Math.floor((lastDate - new Date(author.firstCommitDate).getTime()) / 86400000) < 30) newJoiners.push(detail);
+    });
+
+    const total = authors.size || 1;
+    return {
+      active,
+      occasional,
+      dormant,
+      lost,
+      newJoiners,
+      churnRate: lost.length / total,
+      retentionRate: (active.length + occasional.length) / total,
+      growthRate: newJoiners.length / total,
+    };
+  }
+
+  function getPairKey(a, b) {
+    return a < b ? `${a}::${b}` : `${b}::${a}`;
+  }
+
+  function deriveAdvancedCollaboration(commits) {
+    if (commits.length === 0) return undefined;
+
+    const fileCounts = new Map();
+    const pairCounts = new Map();
+    const fileAuthors = new Map();
+
+    commits.forEach(commit => {
+      const files = [...new Set(getCommitFiles(commit).map(file => file.path))].slice(0, 30);
+      files.forEach(file => {
+        fileCounts.set(file, (fileCounts.get(file) || 0) + 1);
+        if (!fileAuthors.has(file)) fileAuthors.set(file, new Set());
+        fileAuthors.get(file).add(commit.author || 'Unknown');
+      });
+      for (let i = 0; i < files.length; i++) {
+        for (let j = i + 1; j < files.length; j++) {
+          const key = getPairKey(files[i], files[j]);
+          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+        }
+      }
+    });
+
+    const tightCoupling = [...pairCounts.entries()].map(([key, coOccurrence]) => {
+      const [file1, file2] = key.split('::');
+      const denominator = Math.max(1, Math.min(fileCounts.get(file1) || 1, fileCounts.get(file2) || 1));
+      return { file1, file2, coOccurrence, coupling: coOccurrence / denominator };
+    }).sort((a, b) => b.coupling - a.coupling).slice(0, 20);
+
+    const authorPairs = new Map();
+    fileAuthors.forEach((authors, file) => {
+      const list = [...authors].sort();
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const key = getPairKey(list[i], list[j]);
+          const current = authorPairs.get(key) || { author1: list[i], author2: list[j], sharedFiles: [], collaborationCount: 0 };
+          current.sharedFiles.push(file);
+          current.collaborationCount++;
+          authorPairs.set(key, current);
+        }
+      }
+    });
+
+    const pairProgramming = [...authorPairs.values()]
+      .filter(pair => pair.sharedFiles.length >= 3)
+      .sort((a, b) => b.collaborationCount - a.collaborationCount)
+      .slice(0, 20);
+    const highCoupling = tightCoupling.filter(pair => pair.coupling > 0.7).length;
+
+    return {
+      tightCoupling,
+      frequentPairs: tightCoupling,
+      pairProgramming,
+      couplingScore: tightCoupling.length ? Math.min(100, Math.round((highCoupling / tightCoupling.length) * 100)) : 0,
+    };
+  }
+
+  function deriveChangeSizeDistribution(commits) {
+    if (commits.length === 0) return undefined;
+
+    const buckets = [
+      { label: 'XS', range: '<10', count: 0, max: 9 },
+      { label: 'S', range: '10-49', count: 0, max: 49 },
+      { label: 'M', range: '50-199', count: 0, max: 199 },
+      { label: 'L', range: '200-999', count: 0, max: 999 },
+      { label: 'XL', range: '>=1000', count: 0, max: Infinity },
+    ];
+    const sizes = commits.map(getCommitLines).sort((a, b) => a - b);
+    sizes.forEach(size => {
+      buckets.find(bucket => size <= bucket.max).count++;
+    });
+
+    const largeCommits = [...commits]
+      .map(commit => ({
+        hash: commit.hash,
+        author: commit.author,
+        date: commit.date,
+        message: commit.message,
+        totalLines: getCommitLines(commit),
+        filesCount: getCommitFiles(commit).length,
+      }))
+      .sort((a, b) => b.totalLines - a.totalLines)
+      .slice(0, 20);
+
+    return {
+      buckets: buckets.map(({ max, ...bucket }) => ({
+        ...bucket,
+        percentage: commits.length ? (bucket.count / commits.length) * 100 : 0,
+      })),
+      avgChangeSize: sizes.reduce((sum, size) => sum + size, 0) / sizes.length,
+      medianChangeSize: sizes[Math.floor(sizes.length / 2)] || 0,
+      p95ChangeSize: sizes[Math.floor(sizes.length * 0.95)] || 0,
+      largeCommits,
+    };
+  }
+
+  function deriveDirectoryCoupling(commits) {
+    if (commits.length === 0) return undefined;
+
+    const dirCounts = new Map();
+    const pairCounts = new Map();
+    commits.forEach(commit => {
+      const dirs = [...new Set(getCommitFiles(commit).map(file => getPathDirectory(file.path)))].slice(0, 20);
+      dirs.forEach(dir => dirCounts.set(dir, (dirCounts.get(dir) || 0) + 1));
+      for (let i = 0; i < dirs.length; i++) {
+        for (let j = i + 1; j < dirs.length; j++) {
+          const key = getPairKey(dirs[i], dirs[j]);
+          pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+        }
+      }
+    });
+
+    const directories = [...dirCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([dir]) => dir);
+    const matrix = [];
+    directories.forEach(dir1 => directories.forEach(dir2 => {
+      const value = dir1 === dir2 ? dirCounts.get(dir1) || 0 : pairCounts.get(getPairKey(dir1, dir2)) || 0;
+      matrix.push({ dir1, dir2, value });
+    }));
+
+    const pairs = [...pairCounts.entries()].map(([key, coOccurrence]) => {
+      const [dir1, dir2] = key.split('::');
+      const denominator = Math.max(1, Math.min(dirCounts.get(dir1) || 1, dirCounts.get(dir2) || 1));
+      return { dir1, dir2, coOccurrence, coupling: coOccurrence / denominator };
+    }).sort((a, b) => b.coOccurrence - a.coOccurrence).slice(0, 20);
+
+    return { pairs, matrix, directories };
+  }
+
+  function deriveEngineering(commits) {
+    if (commits.length === 0) return undefined;
+
+    const messageStats = deriveMessageStats(commits);
+    const conventionalCount = Object.entries(messageStats.typeDistribution)
+      .filter(([type]) => type !== 'other')
+      .reduce((sum, [, count]) => sum + count, 0);
+    const scopeCount = commits.filter(commit => /^[a-zA-Z]+\(.+\):/.test(commit.message || '')).length;
+    const mergeCommits = commits.filter(commit => /^merge\b/i.test(commit.message || ''));
+    const bugFiles = new Map();
+    let createdFiles = 0;
+    let deletedFiles = 0;
+    let modifiedFiles = 0;
+
+    commits.forEach(commit => {
+      const isFix = /^(fix|bugfix|hotfix)(\(.+\))?:|fix|bug/i.test(commit.message || '');
+      getCommitFiles(commit).forEach(file => {
+        if (file.status === 'added') createdFiles++;
+        else if (file.status === 'deleted') deletedFiles++;
+        else modifiedFiles++;
+
+        if (isFix) {
+          const current = bugFiles.get(file.path) || { path: file.path, fixCount: 0, lastFixDate: commit.date, fixAuthors: new Set() };
+          current.fixCount++;
+          if (new Date(commit.date) > new Date(current.lastFixDate)) current.lastFixDate = commit.date;
+          current.fixAuthors.add(commit.author || 'Unknown');
+          bugFiles.set(file.path, current);
+        }
+      });
+    });
+
+    const totalFileOps = createdFiles + deletedFiles + modifiedFiles || 1;
+    const conventionalRate = commits.length ? conventionalCount / commits.length : 0;
+    const scopeCoverageRate = commits.length ? scopeCount / commits.length : 0;
+
+    return {
+      bugFixHotFiles: {
+        fixCommitCount: commits.filter(commit => /^(fix|bugfix|hotfix)(\(.+\))?:|fix|bug/i.test(commit.message || '')).length,
+        hotFiles: [...bugFiles.values()]
+          .map(file => ({ ...file, fixAuthors: [...file.fixAuthors] }))
+          .sort((a, b) => b.fixCount - a.fixCount)
+          .slice(0, 20),
+      },
+      reviewQuality: {
+        mergeCommitCount: mergeCommits.length,
+        reviewedMergeCount: 0,
+        reviewParticipationRate: 0,
+        reviewers: [],
+      },
+      commitQuality: {
+        score: Math.round((conventionalRate * 0.65 + scopeCoverageRate * 0.35) * 100),
+        conventionalRate,
+        scopeCoverageRate,
+        averageMessageLength: messageStats.avgMessageLength,
+        typeDistribution: messageStats.typeDistribution,
+      },
+      changeMix: {
+        createdFiles,
+        deletedFiles,
+        modifiedFiles,
+        featureRatio: createdFiles / totalFileOps,
+        refactorRatio: modifiedFiles / totalFileOps,
+      },
+    };
+  }
+
+  function deriveTechDebt(derivedStats) {
+    const stability = derivedStats.stability;
+    if (!stability) return undefined;
+
+    const highRiskFiles = stability.fileChurnRate.slice(0, 10).map(file => ({
+      path: file.path,
+      riskScore: Math.min(100, Math.round(file.churnRate * 60 + file.modifyCount * 4)),
+      complexity: Math.min(100, file.modifyCount * 10),
+      churnRate: file.churnRate,
+      testCoverage: 0,
+      knowledgeRisk: 0,
+      primaryAuthor: '',
+      lastModified: derivedStats.lastCommitDate,
+    }));
+    const avgRisk = highRiskFiles.length
+      ? highRiskFiles.reduce((sum, file) => sum + file.riskScore, 0) / highRiskFiles.length
+      : 0;
+
+    return {
+      radar: [
+        { dimension: '流失率', score: Math.min(100, Math.round((derivedStats.quality.churnRate || 0) * 100)), riskLevel: 'medium', description: '删除/新增比例', affectedFiles: highRiskFiles.length },
+        { dimension: '大提交', score: derivedStats.changeSizeDistribution?.buckets.find(b => b.label === 'XL')?.percentage || 0, riskLevel: 'medium', description: 'XL 提交占比', affectedFiles: 0 },
+        { dimension: '热点文件', score: avgRisk, riskLevel: avgRisk > 60 ? 'high' : avgRisk > 30 ? 'medium' : 'low', description: '频繁修改文件', affectedFiles: highRiskFiles.length },
+      ],
+      highRiskFiles,
+      aiDetection: { suspiciousFiles: [], totalSuspicious: 0 },
+      duplication: { clusters: [], fileScores: highRiskFiles.map(file => ({ file: file.path, score: file.riskScore })) },
+      trends: derivedStats.trends.weeklyTrend.map(point => ({ date: point.week, debt: point.linesDeleted })),
+      actionItems: [],
+    };
+  }
+
+  function applyFilteredAIStats(derived, commits) {
+    const hashes = new Set(commits.map(commit => commit.hash));
+    const totalLines = derived.linesAdded + derived.linesDeleted;
+
+    if (baseStats.aiMetrics) {
+      const highAICommits = (baseStats.aiMetrics.highAICommits || [])
+        .filter(commit => hashes.has(commit.hash));
+      const totalAILines = highAICommits.reduce((sum, commit) => sum + (commit.linesAdded || 0), 0);
+      derived.aiMetrics = {
+        ...baseStats.aiMetrics,
+        highAICommits,
+        suspiciousCommits: highAICommits.length,
+        totalAILines,
+        totalLines,
+        aiPercentage: totalLines > 0 ? (totalAILines / totalLines) * 100 : 0,
+      };
+    } else {
+      derived.aiMetrics = undefined;
+    }
+
+    derived.authorAIStats = (baseStats.authorAIStats || []).filter(item =>
+      !reportState.author || String(item.email || '').toLowerCase() === reportState.author
+    );
+    derived.directoryAIStats = (baseStats.directoryAIStats || []).filter(item =>
+      !reportState.directory || item.path === reportState.directory || String(item.path || '').startsWith(reportState.directory + '/')
+    );
+    derived.aiTrends = isReportFiltered() ? [] : baseStats.aiTrends;
+    derived.aiQualityRisk = filterAIQualityRisk();
+  }
+
+  function filterAIQualityRisk() {
+    const data = baseStats.aiQualityRisk;
+    if (!data) return undefined;
+
+    const files = (data.files || []).filter(file =>
+      !reportState.directory || getPathDirectory(file.path) === reportState.directory || String(file.path || '').startsWith(reportState.directory + '/')
+    );
+    const scatter = (data.scatter || []).filter(point =>
+      !reportState.directory || getPathDirectory(point.path) === reportState.directory || String(point.path || '').startsWith(reportState.directory + '/')
+    );
+    const summary = { highAIHighChurn: 0, highAILowChurn: 0, lowAIHighChurn: 0, lowAILowChurn: 0 };
+    scatter.forEach(point => {
+      if (point.aiScore > 50 && point.churnRate > 0.5) summary.highAIHighChurn++;
+      else if (point.aiScore > 50) summary.highAILowChurn++;
+      else if (point.churnRate > 0.5) summary.lowAIHighChurn++;
+      else summary.lowAILowChurn++;
+    });
+    return { files, scatter, summary };
+  }
