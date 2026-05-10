@@ -6,7 +6,7 @@ import type {
   DirectoryAIStats,
   AITrendPoint,
 } from '../types/index.js';
-import { calculateAIScore } from './tech-debt/ai-detector.js';
+import { evaluateAIScore } from './tech-debt/ai-detector.js';
 import { extname } from 'node:path';
 
 export function calculateAIMetrics(commits: CommitRecord[]): {
@@ -34,7 +34,8 @@ export function calculateAIMetrics(commits: CommitRecord[]): {
   let suspiciousCommits = 0;
 
   for (const commit of commits) {
-    const aiScore = calculateAIScore(commit);
+    const aiEvaluation = evaluateAIScore(commit);
+    const aiScore = aiEvaluation.score;
     const commitLines = commit.files.reduce((sum, f) => sum + f.added, 0);
     const estimatedAILines = Math.round((commitLines * aiScore) / 100);
 
@@ -52,6 +53,7 @@ export function calculateAIMetrics(commits: CommitRecord[]): {
         linesAdded: commitLines,
         filesCount: commit.files.length,
         message: commit.message,
+        reasons: aiEvaluation.reasons,
       });
     }
 
@@ -121,6 +123,7 @@ export function calculateAIMetrics(commits: CommitRecord[]): {
 
     directoryAIStats.push({
       path,
+      displayPath: path,
       commits: data.commits.size,
       aiLines: data.aiLines,
       totalLines: data.totalLines,

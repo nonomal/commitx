@@ -461,12 +461,14 @@ export interface AIMetrics {
 export interface AICommit {
   hash: string;
   author: string;
+  repoName?: string;
   date: Date;
   aiScore: number;
   estimatedAILines: number;
   linesAdded: number;
   filesCount: number;
   message: string;
+  reasons: string[];
 }
 
 /** 作者 AI 统计 */
@@ -481,12 +483,20 @@ export interface AuthorAIStats {
 /** 目录 AI 统计 */
 export interface DirectoryAIStats {
   path: string;
+  repoName?: string;
+  displayPath?: string;
   commits: number;
   aiLines: number;
   totalLines: number;
   aiPercentage: number;
   lastModified: Date;
   isHighRisk: boolean;
+}
+
+/** AI 评分评估结果 */
+export interface AIScoreEvaluation {
+  score: number;
+  reasons: string[];
 }
 
 /** AI 趋势数据点 */

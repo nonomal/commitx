@@ -96,6 +96,7 @@ test('calculateStats scores commits that explicitly mention AI assistance', () =
   assert.ok(stats.aiMetrics.aiPercentage > 0);
   assert.equal(stats.aiMetrics.suspiciousCommits, 1);
   assert.equal(stats.aiMetrics.highAICommits[0].hash, 'ai-assisted');
+  assert.deepEqual(stats.aiMetrics.highAICommits[0].reasons, ['AI 工具关键词', '低删除率大新增']);
   assert.ok(stats.aiMetrics.highAICommits[0].estimatedAILines < stats.aiMetrics.highAICommits[0].linesAdded);
 });
 
@@ -122,6 +123,12 @@ test('mergeStats combines AI usage metrics across repositories', () => {
       files: [{ path: 'src/generated-api.ts', added: 80, deleted: 0, status: 'added' }],
     }),
   ]);
+  first.aiMetrics.highAICommits.forEach((item) => {
+    item.repoName = 'repo-a';
+  });
+  first.directoryAIStats.forEach((item) => {
+    item.repoName = 'repo-a';
+  });
   const second = calculateStats([
     commit({
       hash: 'repo-b-ai',
@@ -129,9 +136,15 @@ test('mergeStats combines AI usage metrics across repositories', () => {
       email: 'bob@example.com',
       date: new Date('2026-01-08T10:00:00+08:00'),
       message: 'feat: add copilot output',
-      files: [{ path: 'packages/client.ts', added: 60, deleted: 1, status: 'added' }],
+      files: [{ path: 'src/client.ts', added: 60, deleted: 1, status: 'added' }],
     }),
   ]);
+  second.aiMetrics.highAICommits.forEach((item) => {
+    item.repoName = 'repo-b';
+  });
+  second.directoryAIStats.forEach((item) => {
+    item.repoName = 'repo-b';
+  });
 
   const merged = mergeStats([first, second]);
 
@@ -139,9 +152,17 @@ test('mergeStats combines AI usage metrics across repositories', () => {
   assert.equal(merged.aiMetrics.totalLines, 140);
   assert.equal(merged.aiMetrics.highAICommits.length, 2);
   assert.deepEqual(
+    merged.aiMetrics.highAICommits.map((commit) => commit.repoName).sort(),
+    ['repo-a', 'repo-b']
+  );
+  assert.deepEqual(
     merged.authorAIStats.map((author) => author.email).sort(),
     ['alice@example.com', 'bob@example.com']
   );
-  assert.ok(merged.directoryAIStats.length > 0);
+  assert.equal(merged.directoryAIStats.length, 2);
+  assert.deepEqual(
+    merged.directoryAIStats.map((dir) => dir.displayPath).sort(),
+    ['repo-a / src', 'repo-b / src']
+  );
   assert.ok(merged.aiTrends.length > 0);
 });

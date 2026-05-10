@@ -522,19 +522,24 @@ function mergeAIStats(merged: CommitStats, statsList: CommitStats[]): void {
     }
 
     for (const directory of stats.directoryAIStats || []) {
-      const existing = directoryMap.get(directory.path);
+      const key = directory.repoName ? `${directory.repoName}|||${directory.path}` : directory.path;
+      const displayPath = directory.repoName
+        ? `${directory.repoName} / ${directory.path}`
+        : directory.displayPath || directory.path;
+      const existing = directoryMap.get(key);
       if (existing) {
         existing.commits += directory.commits;
         existing.aiLines += directory.aiLines;
         existing.totalLines += directory.totalLines;
         existing.aiPercentage = calculatePercentage(existing.aiLines, existing.totalLines);
+        existing.displayPath = displayPath;
         existing.lastModified =
           new Date(directory.lastModified) > new Date(existing.lastModified)
             ? directory.lastModified
             : existing.lastModified;
         existing.isHighRisk = existing.commits > 50 && existing.aiPercentage > 60;
       } else {
-        directoryMap.set(directory.path, { ...directory });
+        directoryMap.set(key, { ...directory, displayPath });
       }
     }
 

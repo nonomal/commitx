@@ -1,41 +1,53 @@
-import type { CommitRecord, AIDetectionResult, SuspiciousFile } from '../../types/index.js';
+import type { CommitRecord, AIDetectionResult, AIScoreEvaluation, SuspiciousFile } from '../../types/index.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 
 export function calculateAIScore(commit: CommitRecord): number {
+  return evaluateAIScore(commit).score;
+}
+
+export function evaluateAIScore(commit: CommitRecord): AIScoreEvaluation {
   let score = 0;
+  const reasons: string[] = [];
   const totalLines = commit.files.reduce((sum, f) => sum + f.added, 0);
   const addedFiles = commit.files.filter((file) => file.status === 'added').length;
 
   if (mentionsAITool(commit.message) || mentionsAITool(commit.body || '')) {
     score += 55;
+    reasons.push('AI 工具关键词');
   }
 
   if (mentionsGeneratedOutput(commit.message) || mentionsGeneratedOutput(commit.body || '')) {
     score += 15;
+    reasons.push('生成产物关键词');
   }
 
   if (totalLines > 100 && commit.files.length >= 3 && addedFiles / commit.files.length > 0.6) {
     score += 20;
+    reasons.push('大批量新增文件');
   }
 
   if (totalLines > 80 && commit.files.reduce((sum, f) => sum + f.deleted, 0) <= totalLines * 0.05) {
     score += 15;
+    reasons.push('低删除率大新增');
   }
 
   if (totalLines > 1000 && commit.files.length > 10 && isGenericMessage(commit.message)) {
     score += 40;
+    reasons.push('大型通用提交');
   } else if (totalLines > 500) {
     score += 20;
+    reasons.push('大型提交');
   }
 
   const anomalousFiles = commit.files.filter(f => hasAnomalousNaming(f.path));
   if (anomalousFiles.length > 0) {
     score += Math.min(30, (anomalousFiles.length / commit.files.length) * 30);
+    reasons.push('异常命名');
   }
 
-  return Math.min(100, score);
+  return { score: Math.min(100, score), reasons };
 }
 
 export async function detectAICode(

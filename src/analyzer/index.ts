@@ -54,6 +54,13 @@ export async function analyzeRepos(options: AnalyzeOptions): Promise<CommitStats
       fullStats.commitDetails.forEach((commit) => {
         commit.repoName = repo.name;
       });
+      fullStats.aiMetrics?.highAICommits.forEach((commit) => {
+        commit.repoName = repo.name;
+      });
+      fullStats.directoryAIStats?.forEach((directory) => {
+        directory.repoName = repo.name;
+        directory.displayPath = repos.length > 1 ? `${repo.name} / ${directory.path}` : directory.path;
+      });
 
       allStats.push(fullStats);
     } catch (error) {

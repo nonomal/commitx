@@ -70,13 +70,21 @@ test('single-repository only empty states provide next-step guidance', () => {
 
 test('AI usage analysis exposes author and directory ranking views', () => {
   const template = readTemplate('templates/report-sections/02-advanced.html');
-  const script = readTemplate('templates/report-scripts/07-collab-debt-ai.html');
+  const script = [
+    'templates/report-scripts/07-collab-debt-ai.html',
+    'templates/report-scripts/09-extensions.html',
+  ].map(readTemplate).join('\n');
   const derivedScript = readTemplate('templates/report-scripts/00-advanced-derived.html');
 
   assert.match(template, /id="top-ai-dirs-body"/);
   assert.match(template, /id="author-ai-stats-body"/);
+  assert.match(template, /判定原因/);
+  assert.match(template, /仓库/);
   assert.match(script, /function renderTopAIDirs/);
   assert.match(script, /function renderAuthorAIStats/);
+  assert.match(script, /formatAIReasons/);
+  assert.match(script, /getAIQualitySuggestion/);
   assert.match(script, /stats\.authorAIStats/);
+  assert.match(script, /重点 Review \+ 补测试/);
   assert.match(derivedScript, /estimatedAILines/);
 });
