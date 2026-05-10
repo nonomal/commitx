@@ -336,25 +336,45 @@
 
       <!-- AI Usage Analysis Tab -->
       <div id="ai-usage" class="advanced-tab-content hidden fade-in-up">
-        <!-- High AI + High Activity Directories -->
-        <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6 mb-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">高 AI + 高活跃目录</h3>
-            <span class="text-xs text-slate-500 dark:text-slate-400">建议加强 Code Review 和测试覆盖</span>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">AI 目录 TOP 10</h3>
+              <span class="text-xs text-slate-500 dark:text-slate-400">按 AI 占比排序</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left border-b border-slate-200 dark:border-slate-700">
+                  <tr class="text-slate-500 dark:text-slate-400 font-medium">
+                    <th class="pb-3">目录</th>
+                    <th class="pb-3 text-right">提交数</th>
+                    <th class="pb-3 text-right">AI 占比</th>
+                    <th class="pb-3 text-center">风险</th>
+                  </tr>
+                </thead>
+                <tbody id="top-ai-dirs-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="text-left border-b border-slate-200 dark:border-slate-700">
-                <tr class="text-slate-500 dark:text-slate-400 font-medium">
-                  <th class="pb-3">目录</th>
-                  <th class="pb-3 text-right">提交数</th>
-                  <th class="pb-3 text-right">AI 占比</th>
-                  <th class="pb-3 text-right">最后修改</th>
-                  <th class="pb-3 text-center">风险等级</th>
-                </tr>
-              </thead>
-              <tbody id="high-ai-dirs-body"></tbody>
-            </table>
+
+          <div class="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">作者 AI 使用 TOP 10</h3>
+              <span class="text-xs text-slate-500 dark:text-slate-400">估算新增行占比</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left border-b border-slate-200 dark:border-slate-700">
+                  <tr class="text-slate-500 dark:text-slate-400 font-medium">
+                    <th class="pb-3">作者</th>
+                    <th class="pb-3 text-right">AI 行数</th>
+                    <th class="pb-3 text-right">总行数</th>
+                    <th class="pb-3 text-right">AI 占比</th>
+                  </tr>
+                </thead>
+                <tbody id="author-ai-stats-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 

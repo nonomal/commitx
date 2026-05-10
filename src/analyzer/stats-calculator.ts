@@ -6,6 +6,10 @@ import type {
   DirectoryStats,
   BusiestDay,
   AuthorFileTypeContribution,
+  AICommit,
+  AuthorAIStats,
+  DirectoryAIStats,
+  AITrendPoint,
 } from '../types/index.js';
 import { extname } from 'node:path';
 import { calculateAIMetrics } from './ai-stats-calculator.js';
@@ -442,6 +446,8 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
   // 提交明细排序
   merged.commitDetails.sort((a, b) => a.date.getTime() - b.date.getTime());
 
+  mergeAIStats(merged, statsList);
+
   // 作者文件类型贡献合并
   const contributionMap = new Map<string, AuthorFileTypeContribution>();
   for (const stats of statsList) {
@@ -484,3 +490,81 @@ export function mergeStats(statsList: CommitStats[]): CommitStats {
   return merged;
 }
 
+function mergeAIStats(merged: CommitStats, statsList: CommitStats[]): void {
+  const aiStatsList = statsList.filter((stats) => stats.aiMetrics);
+  if (aiStatsList.length === 0) return;
+
+  const highAICommits: AICommit[] = [];
+  const authorMap = new Map<string, AuthorAIStats>();
+  const directoryMap = new Map<string, DirectoryAIStats>();
+  const trendMap = new Map<string, AITrendPoint>();
+  let totalAILines = 0;
+  let totalLines = 0;
+  let suspiciousCommits = 0;
+
+  for (const stats of aiStatsList) {
+    const metrics = stats.aiMetrics!;
+    totalAILines += metrics.totalAILines;
+    totalLines += metrics.totalLines;
+    suspiciousCommits += metrics.suspiciousCommits;
+    highAICommits.push(...metrics.highAICommits);
+
+    for (const author of stats.authorAIStats || []) {
+      const key = author.email.toLowerCase();
+      const existing = authorMap.get(key);
+      if (existing) {
+        existing.aiLines += author.aiLines;
+        existing.totalLines += author.totalLines;
+        existing.aiPercentage = calculatePercentage(existing.aiLines, existing.totalLines);
+      } else {
+        authorMap.set(key, { ...author });
+      }
+    }
+
+    for (const directory of stats.directoryAIStats || []) {
+      const existing = directoryMap.get(directory.path);
+      if (existing) {
+        existing.commits += directory.commits;
+        existing.aiLines += directory.aiLines;
+        existing.totalLines += directory.totalLines;
+        existing.aiPercentage = calculatePercentage(existing.aiLines, existing.totalLines);
+        existing.lastModified =
+          new Date(directory.lastModified) > new Date(existing.lastModified)
+            ? directory.lastModified
+            : existing.lastModified;
+        existing.isHighRisk = existing.commits > 50 && existing.aiPercentage > 60;
+      } else {
+        directoryMap.set(directory.path, { ...directory });
+      }
+    }
+
+    for (const trend of stats.aiTrends || []) {
+      const existing = trendMap.get(trend.week);
+      if (existing) {
+        existing.aiLines += trend.aiLines;
+        existing.totalLines += trend.totalLines;
+        existing.aiPercentage = calculatePercentage(existing.aiLines, existing.totalLines);
+      } else {
+        trendMap.set(trend.week, { ...trend });
+      }
+    }
+  }
+
+  merged.aiMetrics = {
+    totalAILines,
+    totalLines,
+    aiPercentage: calculatePercentage(totalAILines, totalLines),
+    suspiciousCommits,
+    highAICommits: highAICommits.sort((a, b) => b.aiScore - a.aiScore).slice(0, 20),
+  };
+  merged.authorAIStats = Array.from(authorMap.values())
+    .sort((a, b) => b.aiPercentage - a.aiPercentage);
+  merged.directoryAIStats = Array.from(directoryMap.values())
+    .sort((a, b) => b.aiPercentage - a.aiPercentage);
+  merged.aiTrends = Array.from(trendMap.values())
+    .sort((a, b) => a.week.localeCompare(b.week));
+}
+
+function calculatePercentage(part: number, total: number): number {
+  return total > 0 ? (part / total) * 100 : 0;
+}

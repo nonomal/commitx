@@ -48,6 +48,7 @@ export function calculateAIMetrics(commits: CommitRecord[]): {
         author: commit.author,
         date: commit.date,
         aiScore,
+        estimatedAILines,
         linesAdded: commitLines,
         filesCount: commit.files.length,
         message: commit.message,

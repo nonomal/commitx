@@ -463,6 +463,7 @@ export interface AICommit {
   author: string;
   date: Date;
   aiScore: number;
+  estimatedAILines: number;
   linesAdded: number;
   filesCount: number;
   message: string;

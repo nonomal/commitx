@@ -83,3 +83,65 @@ test('mergeStats combines commit details across repositories', () => {
     ['repo-b', 'repo-a']
   );
 });
+
+test('calculateStats scores commits that explicitly mention AI assistance', () => {
+  const stats = calculateStats([
+    commit({
+      hash: 'ai-assisted',
+      message: 'feat: add claude assisted client',
+      files: [{ path: 'src/client.ts', added: 120, deleted: 2, status: 'added' }],
+    }),
+  ]);
+
+  assert.ok(stats.aiMetrics.aiPercentage > 0);
+  assert.equal(stats.aiMetrics.suspiciousCommits, 1);
+  assert.equal(stats.aiMetrics.highAICommits[0].hash, 'ai-assisted');
+  assert.ok(stats.aiMetrics.highAICommits[0].estimatedAILines < stats.aiMetrics.highAICommits[0].linesAdded);
+});
+
+test('calculateStats does not treat generic generated output as high AI by itself', () => {
+  const stats = calculateStats([
+    commit({
+      hash: 'generated-types',
+      message: 'chore: update generated types',
+      files: [{ path: 'src/types.ts', added: 30, deleted: 5, status: 'modified' }],
+    }),
+  ]);
+
+  assert.equal(stats.aiMetrics.suspiciousCommits, 0);
+  assert.equal(stats.aiMetrics.highAICommits.length, 0);
+});
+
+test('mergeStats combines AI usage metrics across repositories', () => {
+  const first = calculateStats([
+    commit({
+      hash: 'repo-a-ai',
+      author: 'Alice',
+      email: 'alice@example.com',
+      message: 'feat: generated with cursor',
+      files: [{ path: 'src/generated-api.ts', added: 80, deleted: 0, status: 'added' }],
+    }),
+  ]);
+  const second = calculateStats([
+    commit({
+      hash: 'repo-b-ai',
+      author: 'Bob',
+      email: 'bob@example.com',
+      date: new Date('2026-01-08T10:00:00+08:00'),
+      message: 'feat: add copilot output',
+      files: [{ path: 'packages/client.ts', added: 60, deleted: 1, status: 'added' }],
+    }),
+  ]);
+
+  const merged = mergeStats([first, second]);
+
+  assert.equal(merged.aiMetrics.suspiciousCommits, 2);
+  assert.equal(merged.aiMetrics.totalLines, 140);
+  assert.equal(merged.aiMetrics.highAICommits.length, 2);
+  assert.deepEqual(
+    merged.authorAIStats.map((author) => author.email).sort(),
+    ['alice@example.com', 'bob@example.com']
+  );
+  assert.ok(merged.directoryAIStats.length > 0);
+  assert.ok(merged.aiTrends.length > 0);
+});

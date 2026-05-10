@@ -67,3 +67,16 @@ test('single-repository only empty states provide next-step guidance', () => {
   assert.match(scripts, /重新选择单个仓库/);
   assert.match(scripts, /--depth/);
 });
+
+test('AI usage analysis exposes author and directory ranking views', () => {
+  const template = readTemplate('templates/report-sections/02-advanced.html');
+  const script = readTemplate('templates/report-scripts/07-collab-debt-ai.html');
+  const derivedScript = readTemplate('templates/report-scripts/00-advanced-derived.html');
+
+  assert.match(template, /id="top-ai-dirs-body"/);
+  assert.match(template, /id="author-ai-stats-body"/);
+  assert.match(script, /function renderTopAIDirs/);
+  assert.match(script, /function renderAuthorAIStats/);
+  assert.match(script, /stats\.authorAIStats/);
+  assert.match(derivedScript, /estimatedAILines/);
+});

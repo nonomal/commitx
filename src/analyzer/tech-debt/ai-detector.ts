@@ -6,6 +6,23 @@ import { existsSync } from 'node:fs';
 export function calculateAIScore(commit: CommitRecord): number {
   let score = 0;
   const totalLines = commit.files.reduce((sum, f) => sum + f.added, 0);
+  const addedFiles = commit.files.filter((file) => file.status === 'added').length;
+
+  if (mentionsAITool(commit.message) || mentionsAITool(commit.body || '')) {
+    score += 55;
+  }
+
+  if (mentionsGeneratedOutput(commit.message) || mentionsGeneratedOutput(commit.body || '')) {
+    score += 15;
+  }
+
+  if (totalLines > 100 && commit.files.length >= 3 && addedFiles / commit.files.length > 0.6) {
+    score += 20;
+  }
+
+  if (totalLines > 80 && commit.files.reduce((sum, f) => sum + f.deleted, 0) <= totalLines * 0.05) {
+    score += 15;
+  }
 
   if (totalLines > 1000 && commit.files.length > 10 && isGenericMessage(commit.message)) {
     score += 40;
@@ -105,6 +122,23 @@ function isGenericMessage(message: string): boolean {
   return genericPatterns.some(pattern => pattern.test(normalized));
 }
 
+function mentionsAITool(text: string): boolean {
+  const aiPatterns = [
+    /\bai\b/i,
+    /\bcopilot\b/i,
+    /\bclaude\b/i,
+    /\bcursor\b/i,
+    /\bchatgpt\b/i,
+    /\bgpt[-\s]?\d*\b/i,
+  ];
+
+  return aiPatterns.some(pattern => pattern.test(text));
+}
+
+function mentionsGeneratedOutput(text: string): boolean {
+  return /\bgenerated\b|\bcodegen\b|\bauto[-\s]?generated\b/i.test(text);
+}
+
 function hasAnomalousNaming(path: string): boolean {
   const anomalousPatterns = [
     /function\d+/i,
@@ -112,6 +146,8 @@ function hasAnomalousNaming(path: string): boolean {
     /test\d+/i,
     /file\d+/i,
     /component\d+/i,
+    /generated/i,
+    /auto[-_]?generated/i,
     /untitled/i,
     /copy\d*/i,
   ];

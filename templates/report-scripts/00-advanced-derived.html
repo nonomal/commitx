@@ -415,7 +415,10 @@
     if (baseStats.aiMetrics) {
       const highAICommits = (baseStats.aiMetrics.highAICommits || [])
         .filter(commit => hashes.has(commit.hash));
-      const totalAILines = highAICommits.reduce((sum, commit) => sum + (commit.linesAdded || 0), 0);
+      const totalAILines = highAICommits.reduce((sum, commit) => {
+        const estimated = Number(commit.estimatedAILines);
+        return sum + (Number.isFinite(estimated) ? estimated : 0);
+      }, 0);
       derived.aiMetrics = {
         ...baseStats.aiMetrics,
         highAICommits,
