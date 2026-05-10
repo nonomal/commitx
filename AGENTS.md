@@ -128,3 +128,13 @@ node dist/index.js ~/projects --period 3m --open
 - 统计计算已拆分为 `stats-calculator.ts`、`stats-metrics.ts`、`stats-empty.ts`、`stats-utils.ts`
 - 高级统计模块（`analyzer/advanced/`）仅在单仓库场景下有效
 - 多仓库合并时，高级统计字段为 `undefined`（见 `stats-calculator.ts` 第 447-461 行注释）
+
+## .context Project Context
+
+> This project uses `.context/` to manage development decision context.
+
+- Coding style: `.context/prefs/coding-style.md`
+- Workflow rules: `.context/prefs/workflow.md`
+- Decision history: `.context/history/commits.md`
+
+**Rule**: Read prefs/ before modifying code. Log decisions per workflow.md rules.
